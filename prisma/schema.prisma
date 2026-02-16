@@ -1,0 +1,182 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ProductionType {
+  HT
+  HK
+}
+
+enum QCStatus {
+  PENDING
+  DONE
+}
+
+model User {
+  id        String   @id @default(cuid())
+  username  String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Product {
+  id             String   @id @default(cuid())
+  computerCode   String   @unique @db.VarChar(50)
+  partNo         String   @db.VarChar(50)
+  productName    String   @db.VarChar(255)
+
+  productionType ProductionType @default(HT)
+  location       String? @db.VarChar(100)
+  initialStock   Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  incomingTransactions IncomingTransaction[]
+  afterOQCTransactions AfterOQCTransaction[]
+  outgoingTransactions OutgoingTransaction[]
+}
+
+//
+// RECEIVING (INCOMING)
+//
+model IncomingTransaction {
+  id String @id @default(cuid())
+
+  date DateTime @default(now())
+
+  computerCode String @db.VarChar(50)
+  partNo       String @db.VarChar(50)
+  productName  String @db.VarChar(255)
+
+  incomingQty Int @default(0)
+
+  // legacy
+  outgoingQty Int @default(0)
+  balance     Int @default(0)
+
+  remainingQty Int?
+  status       String? @default("OPEN")
+
+  batch Int @default(0)
+  responsiblePerson String @db.VarChar(100)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  product Product @relation(fields: [computerCode], references: [computerCode], onDelete: Cascade)
+  afterOQC AfterOQCTransaction[]
+
+  @@index([computerCode])
+  @@index([date])
+}
+
+//
+// QC MASTER
+//
+model AfterOQCTransaction {
+  id String @id @default(cuid())
+
+  date DateTime @default(now())
+
+  computerCode String @db.VarChar(50)
+  partNo       String @db.VarChar(50)
+  productName  String @db.VarChar(255)
+
+  beforeQty Int
+  afterQty  Int @default(0)
+  ngQty     Int @default(0)
+  spareQty  Int @default(0)
+
+  status QCStatus @default(PENDING)
+  responsiblePerson String? @db.VarChar(100)
+
+  incomingId String
+  incoming IncomingTransaction @relation(fields: [incomingId], references: [id], onDelete: Cascade)
+
+  product Product @relation(fields: [computerCode], references: [computerCode], onDelete: Cascade)
+
+  logs AfterOQCLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([computerCode])
+  @@index([status])
+}
+
+//
+// QC DETAIL LOG
+//
+model AfterOQCLog {
+  id String @id @default(cuid())
+
+  afterOQCId String
+  afterOQC AfterOQCTransaction @relation(fields: [afterOQCId], references: [id], onDelete: Cascade)
+
+  okQty    Int @default(0)
+  ngQty    Int @default(0)
+  spareQty Int @default(0)
+
+  responsiblePerson String? @db.VarChar(100)
+
+  createdAt DateTime @default(now())
+
+  @@index([afterOQCId])
+}
+
+//
+// OUTGOING (SAFE MODE)
+//
+model OutgoingTransaction {
+  id String @id @default(cuid())
+
+  date DateTime @default(now())
+
+  computerCode String? @db.VarChar(50)
+  partNo       String? @db.VarChar(50)
+  productName  String? @db.VarChar(255)
+
+  qtyOut Int
+  responsiblePerson String @db.VarChar(100)
+
+  product Product? @relation(fields: [computerCode], references: [computerCode], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([computerCode])
+  @@index([date])
+}
+
+//
+// DEFLASHING (STANDALONE INPUT + DASHBOARD)
+//
+model Deflashing {
+  id String @id @default(cuid())
+
+  date DateTime @default(now())
+
+  computerCode String @db.VarChar(50)
+  partNo       String @db.VarChar(50)
+  productName  String @db.VarChar(255)
+
+  qtyIn    Int
+  qtyOut   Int @default(0)
+  ngQty    Int @default(0)
+  spareQty Int @default(0)
+
+  responsiblePerson String @db.VarChar(100)
+  remark String? @db.VarChar(255)
+
+  createdAt DateTime @default(now())
+
+  @@index([computerCode])
+  @@index([date])
+}
