@@ -27,6 +27,9 @@ export function DeflashingForm({ onSuccess }: DeflashingFormProps) {
   const [partNo, setPartNo] = useState('')
   const [productName, setProductName] = useState('')
 
+  /* ================= PROCESS TYPE ================= */
+  const [processType, setProcessType] = useState<'HK' | 'HT' | ''>('')
+
   /* ================= QTY ================= */
   const [before, setBefore] = useState(0)
   const [ok, setOk] = useState(0)
@@ -63,14 +66,15 @@ export function DeflashingForm({ onSuccess }: DeflashingFormProps) {
   }
 
   /* ================= CALCULATION ================= */
-  const processTotal = ok + ng              // wajib = before
-  const stockResult = ok + spare           // masuk inventory
+  const processTotal = ok + ng
+  const stockResult = ok + spare
   const isBalanced = processTotal === before
 
   const isInvalid =
     !computerCode ||
     !partNo ||
     !productName ||
+    !processType ||
     before <= 0 ||
     ok < 0 ||
     spare < 0 ||
@@ -97,6 +101,7 @@ export function DeflashingForm({ onSuccess }: DeflashingFormProps) {
           computerCode,
           partNo,
           productName,
+          processType,
           qtyIn: before,
           qtyOut: ok,
           spareQty: spare,
@@ -118,6 +123,7 @@ export function DeflashingForm({ onSuccess }: DeflashingFormProps) {
       setComputerCode('')
       setPartNo('')
       setProductName('')
+      setProcessType('')
       setBefore(0)
       setOk(0)
       setSpare(0)
@@ -171,6 +177,31 @@ export function DeflashingForm({ onSuccess }: DeflashingFormProps) {
         </div>
       </div>
 
+      {/* PROCESS TYPE */}
+      <div className="bg-slate-50 border rounded p-4 space-y-2">
+        <p className="text-xs text-slate-500">Process Type</p>
+
+        <div className="flex gap-3">
+          <Button
+            type="button"
+            variant={processType === 'HK' ? 'default' : 'outline'}
+            onClick={() => setProcessType('HK')}
+            className="w-24"
+          >
+            HK
+          </Button>
+
+          <Button
+            type="button"
+            variant={processType === 'HT' ? 'default' : 'outline'}
+            onClick={() => setProcessType('HT')}
+            className="w-24"
+          >
+            HT
+          </Button>
+        </div>
+      </div>
+
       {/* INPUT QTY */}
       <div className="grid grid-cols-4 gap-4">
         <div>
@@ -220,11 +251,7 @@ export function DeflashingForm({ onSuccess }: DeflashingFormProps) {
 
         <div className="flex justify-between text-sm">
           <span>Process Check (OK + NG)</span>
-          <span
-            className={`font-bold ${
-              isBalanced ? 'text-green-600' : 'text-red-600'
-            }`}
-          >
+          <span className={`font-bold ${isBalanced ? 'text-green-600' : 'text-red-600'}`}>
             {processTotal} / {before}
           </span>
         </div>
@@ -244,11 +271,7 @@ export function DeflashingForm({ onSuccess }: DeflashingFormProps) {
       </div>
 
       {/* AUTO NG */}
-      <Button
-        type="button"
-        variant="outline"
-        onClick={handleAutoNG}
-      >
+      <Button type="button" variant="outline" onClick={handleAutoNG}>
         Auto Calculate NG
       </Button>
 

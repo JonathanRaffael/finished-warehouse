@@ -167,6 +167,8 @@ model Deflashing {
   partNo       String @db.VarChar(50)
   productName  String @db.VarChar(255)
 
+  productionType ProductionType @default(HT)
+
   qtyIn    Int
   qtyOut   Int @default(0)
   ngQty    Int @default(0)

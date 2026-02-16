@@ -5,7 +5,22 @@ import { prisma } from '@/lib/prisma'
 export async function GET() {
   try {
     const data = await prisma.deflashing.findMany({
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        date: true,
+        computerCode: true,
+        partNo: true,
+        productName: true,
+        productionType: true, // ✅ INCLUDE HK / HT
+        qtyIn: true,
+        qtyOut: true,
+        ngQty: true,
+        spareQty: true,
+        responsiblePerson: true,
+        remark: true,
+        createdAt: true
+      }
     })
 
     return NextResponse.json(data)
@@ -24,6 +39,7 @@ export async function POST(req: Request) {
       computerCode,
       partNo,
       productName,
+      processType, // ✅ dari frontend
       qtyIn,
       qtyOut,
       ngQty,
@@ -32,25 +48,32 @@ export async function POST(req: Request) {
       remark
     } = body
 
-    // basic validation
+    /* ================= VALIDATION ================= */
     if (
       !computerCode ||
       !partNo ||
       !productName ||
+      !processType || // ✅ wajib HK / HT
       !responsiblePerson
     ) {
       return new NextResponse('Invalid payload', { status: 400 })
     }
 
+    /* ================= CREATE ================= */
     const data = await prisma.deflashing.create({
       data: {
         computerCode,
         partNo,
         productName,
+
+        // 🔥 mapping frontend -> database enum
+        productionType: processType,
+
         qtyIn: Number(qtyIn) || 0,
         qtyOut: Number(qtyOut) || 0,
         ngQty: Number(ngQty) || 0,
         spareQty: Number(spareQty) || 0,
+
         responsiblePerson,
         remark
       }
