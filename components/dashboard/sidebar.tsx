@@ -17,14 +17,22 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const menuItems = [
-  { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { label: 'Incoming', href: '/dashboard/incoming', icon: Inbox },
-  { label: 'After OQC', href: '/dashboard/after-oqc', icon: CheckCircle2 },
-  { label: 'Deflashing', href: '/dashboard/deflashing', icon: Wrench }, // ✅ NEW
-  { label: 'Outgoing', href: '/dashboard/outgoing', icon: Send },
-  { label: 'Master Data', href: '/dashboard/master-data', icon: Database },
-];
+/* ================= ROLE BASED MENU ================= */
+
+const menuByRole = {
+  ADMIN: [
+    { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+    { label: 'Incoming', href: '/dashboard/incoming', icon: Inbox },
+    { label: 'After OQC', href: '/dashboard/after-oqc', icon: CheckCircle2 },
+    { label: 'Deflashing', href: '/dashboard/deflashing', icon: Wrench },
+    { label: 'Outgoing', href: '/dashboard/outgoing', icon: Send },
+    { label: 'Master Data', href: '/dashboard/master-data', icon: Database },
+  ],
+
+  DEFLASHING: [
+    { label: 'Deflashing', href: '/dashboard/deflashing', icon: Wrench },
+  ],
+};
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -33,7 +41,26 @@ export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  /* Auto collapse on tablet */
+  const [role, setRole] = useState<string | null>(null);
+  const [roleLoaded, setRoleLoaded] = useState(false);
+
+  /* ================= GET ROLE FROM COOKIE ================= */
+
+  useEffect(() => {
+    const roleCookie = document.cookie
+      .split('; ')
+      .find(row => row.startsWith('role='))
+      ?.split('=')[1];
+
+    // normalize role
+    const normalizedRole = roleCookie?.toUpperCase() ?? 'ADMIN';
+
+    setRole(normalizedRole);
+    setRoleLoaded(true);
+  }, []);
+
+  /* ================= AUTO COLLAPSE ================= */
+
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth < 1024) setCollapsed(true);
@@ -45,11 +72,23 @@ export function Sidebar() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  /* ================= LOGOUT ================= */
+
   const handleLogout = async () => {
     await fetch('/api/auth/logout', { method: 'POST' });
     router.push('/login');
     router.refresh();
   };
+
+  /* ================= WAIT ROLE ================= */
+
+  if (!roleLoaded) return null;
+
+  /* ================= CURRENT MENU ================= */
+
+  const menus =
+    menuByRole[role as keyof typeof menuByRole] ??
+    menuByRole.ADMIN;
 
   return (
     <>
@@ -61,7 +100,7 @@ export function Sidebar() {
         <Menu className="h-5 w-5" />
       </button>
 
-      {/* Overlay mobile */}
+      {/* Mobile overlay */}
       {mobileOpen && (
         <div
           onClick={() => setMobileOpen(false)}
@@ -76,7 +115,7 @@ export function Sidebar() {
           mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         )}
       >
-        {/* Header */}
+        {/* HEADER */}
         <div className="h-16 flex items-center justify-between px-4 border-b bg-white">
           <div className="flex items-center gap-3 overflow-hidden">
             <div className="h-9 w-9 shrink-0 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white font-bold shadow">
@@ -107,9 +146,9 @@ export function Sidebar() {
           </button>
         </div>
 
-        {/* Navigation */}
+        {/* NAVIGATION */}
         <nav className="flex-1 px-2 py-4 space-y-1">
-          {menuItems.map(item => {
+          {menus.map(item => {
             const isActive = pathname === item.href;
             const Icon = item.icon;
 
@@ -147,7 +186,7 @@ export function Sidebar() {
           })}
         </nav>
 
-        {/* Footer */}
+        {/* FOOTER */}
         <div className="border-t bg-white p-2">
           <button
             onClick={handleLogout}

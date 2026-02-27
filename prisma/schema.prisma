@@ -17,10 +17,24 @@ enum QCStatus {
   DONE
 }
 
+//
+// ✅ NEW — USER ROLE SYSTEM
+//
+enum UserRole {
+  ADMIN
+  QC
+  WAREHOUSE
+  DEFLASHING
+}
+
 model User {
   id        String   @id @default(cuid())
   username  String   @unique
   password  String
+
+  // 🔥 ROLE LOGIN (IMPORTANT)
+  role      UserRole @default(WAREHOUSE)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
