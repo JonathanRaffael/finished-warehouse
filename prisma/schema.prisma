@@ -17,9 +17,6 @@ enum QCStatus {
   DONE
 }
 
-//
-// ✅ NEW — USER ROLE SYSTEM
-//
 enum UserRole {
   ADMIN
   QC
@@ -27,18 +24,27 @@ enum UserRole {
   DEFLASHING
 }
 
+enum DeflashingStatus {
+  PENDING
+  DONE
+}
+
+//
+// USER
+//
 model User {
   id        String   @id @default(cuid())
   username  String   @unique
   password  String
-
-  // 🔥 ROLE LOGIN (IMPORTANT)
   role      UserRole @default(WAREHOUSE)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
+//
+// PRODUCT MASTER
+//
 model Product {
   id             String   @id @default(cuid())
   computerCode   String   @unique @db.VarChar(50)
@@ -85,7 +91,9 @@ model IncomingTransaction {
   updatedAt DateTime @updatedAt
 
   product Product @relation(fields: [computerCode], references: [computerCode], onDelete: Cascade)
-  afterOQC AfterOQCTransaction[]
+
+  afterOQC   AfterOQCTransaction[]
+  deflashings Deflashing[]   // ✅ FIX RELATION (WAJIB ADA)
 
   @@index([computerCode])
   @@index([date])
@@ -112,7 +120,7 @@ model AfterOQCTransaction {
   responsiblePerson String? @db.VarChar(100)
 
   incomingId String
-  incoming IncomingTransaction @relation(fields: [incomingId], references: [id], onDelete: Cascade)
+  incoming   IncomingTransaction @relation(fields: [incomingId], references: [id], onDelete: Cascade)
 
   product Product @relation(fields: [computerCode], references: [computerCode], onDelete: Cascade)
 
@@ -132,7 +140,7 @@ model AfterOQCLog {
   id String @id @default(cuid())
 
   afterOQCId String
-  afterOQC AfterOQCTransaction @relation(fields: [afterOQCId], references: [id], onDelete: Cascade)
+  afterOQC   AfterOQCTransaction @relation(fields: [afterOQCId], references: [id], onDelete: Cascade)
 
   okQty    Int @default(0)
   ngQty    Int @default(0)
@@ -146,7 +154,7 @@ model AfterOQCLog {
 }
 
 //
-// OUTGOING (SAFE MODE)
+// OUTGOING
 //
 model OutgoingTransaction {
   id String @id @default(cuid())
@@ -170,29 +178,52 @@ model OutgoingTransaction {
 }
 
 //
-// DEFLASHING (STANDALONE INPUT + DASHBOARD)
+// DEFLASHING
 //
 model Deflashing {
   id String @id @default(cuid())
 
-  date DateTime @default(now())
+  incomingId String?
+  incoming IncomingTransaction? @relation(fields: [incomingId], references: [id], onDelete: Cascade)
 
-  computerCode String @db.VarChar(50)
-  partNo       String @db.VarChar(50)
-  productName  String @db.VarChar(255)
+  incomingDate DateTime @default(now())
+
+  computerCode String
+  partNo       String
+  productName  String
 
   productionType ProductionType @default(HT)
 
-  qtyIn    Int
-  qtyOut   Int @default(0)
-  ngQty    Int @default(0)
-  spareQty Int @default(0)
+  qtyIn        Int
+  processedQty Int @default(0)
 
-  responsiblePerson String @db.VarChar(100)
-  remark String? @db.VarChar(255)
+  status DeflashingStatus @default(PENDING)
 
-  createdAt DateTime @default(now())
+  incomingBy  String
+  processedBy String?
 
-  @@index([computerCode])
-  @@index([date])
+  batchNo Int?   // 🔥 TAMBAHKAN INI
+
+  createdAt   DateTime @default(now())
+  completedAt DateTime?
+
+  logs DeflashingProcessLog[]
+
+  @@index([status])
+  @@index([incomingId])
+}
+model DeflashingProcessLog {
+  id String @id @default(cuid())
+
+  deflashingId String
+  deflashing   Deflashing @relation(fields: [deflashingId], references: [id], onDelete: Cascade)
+
+  qtyOut   Int
+  ngQty    Int
+  spareQty Int
+
+  processedBy String
+  processedAt DateTime @default(now())
+
+  @@index([deflashingId])
 }
