@@ -32,6 +32,10 @@ export default function MasterDataPage() {
   // ➕ delete state
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  // ➕ pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 11;
+
   // Form states
   const [computerCode, setComputerCode] = useState('');
   const [partNo, setPartNo] = useState('');
@@ -53,6 +57,7 @@ export default function MasterDataPage() {
       if (response.ok) {
         const result = await response.json();
         setProducts(result);
+        setCurrentPage(1); // Reset to first page when fetching
       }
     } catch (err) {
       console.log('[v0] Fetch products error:', err);
@@ -170,17 +175,36 @@ export default function MasterDataPage() {
       p.productName.toLowerCase().includes(search.toLowerCase())
   );
 
+  // ➕ Pagination calculations
+  const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const paginatedProducts = filteredProducts.slice(startIndex, endIndex);
+
+  const handlePreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
   return (
-    <div className="space-y-6">
-      <div className="space-y-2">
+    <div className="h-screen overflow-hidden flex flex-col">
+      <div className="space-y-2 px-6 pt-6">
         <h1 className="text-3xl font-bold text-slate-900">Master Data</h1>
         <p className="text-slate-600">Manage product master information</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="flex-1 overflow-hidden flex px-6 py-6 gap-6">
+        <div className="flex-shrink-0 w-full lg:w-1/3">
 
-        {/* Add Product Form */}
-        <Card className="lg:col-span-1 border-slate-200 p-6">
+          {/* Add Product Form */}
+          <Card className="border-slate-200 p-6 flex-shrink-0">
           <h3 className="font-semibold text-slate-900 mb-4">
             {editingId ? 'Edit Product' : 'Add New Product'}
           </h3>
@@ -280,8 +304,10 @@ export default function MasterDataPage() {
           </form>
         </Card>
 
+        </div>
+
         {/* Products List */}
-        <div className="lg:col-span-2 space-y-4">
+        <div className="flex-1 overflow-hidden flex flex-col space-y-4">
           <Card className="border-slate-200 p-4">
             <Input
               placeholder="Search products..."
@@ -291,8 +317,8 @@ export default function MasterDataPage() {
             />
           </Card>
 
-          <Card className="border-slate-200 overflow-hidden">
-            <div className="overflow-x-auto">
+          <Card className="border-slate-200 overflow-hidden flex-1 flex flex-col">
+            <div className="overflow-auto flex-1">
               <table className="w-full text-sm">
                 <thead className="bg-slate-100 border-b border-slate-200">
                   <tr>
@@ -313,8 +339,14 @@ export default function MasterDataPage() {
                         Loading products...
                       </td>
                     </tr>
+                  ) : paginatedProducts.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-6 text-center text-slate-500">
+                        No products found
+                      </td>
+                    </tr>
                   ) : (
-                    filteredProducts.map((product) => (
+                    paginatedProducts.map((product) => (
                       <tr key={product.id} className="hover:bg-slate-50">
                         <td className="px-4 py-3 font-mono text-blue-600 text-xs">
                           {product.computerCode}
@@ -347,6 +379,38 @@ export default function MasterDataPage() {
 
               </table>
             </div>
+
+            {/* ➕ Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="border-t border-slate-200 px-4 py-4 flex items-center justify-between bg-slate-50">
+                <div className="text-xs text-slate-600">
+                  Showing {startIndex + 1} to {Math.min(endIndex, filteredProducts.length)} of {filteredProducts.length} products
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handlePreviousPage}
+                    disabled={currentPage === 1}
+                  >
+                    Previous
+                  </Button>
+                  <div className="flex items-center gap-2 px-3">
+                    <span className="text-xs font-medium">
+                      Page {currentPage} of {totalPages}
+                    </span>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleNextPage}
+                    disabled={currentPage === totalPages}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            )}
           </Card>
         </div>
       </div>
