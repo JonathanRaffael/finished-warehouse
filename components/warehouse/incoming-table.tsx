@@ -37,14 +37,18 @@ export function IncomingTable({
   onSelect,
   hideAction = false
 }: IncomingTableProps) {
+
   const [search, setSearch] = useState('')
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
-  const filtered = transactions.filter(tx =>
-    `${tx.computerCode || ''}${tx.partNo || ''}${tx.productName || ''}`
-      .toLowerCase()
-      .includes(search.toLowerCase())
-  )
+  // ✅ SORT berdasarkan urutan data pertama dibuat
+  const filtered = [...transactions]
+    .sort((a, b) => a.id.localeCompare(b.id))
+    .filter(tx =>
+      `${tx.computerCode || ''}${tx.partNo || ''}${tx.productName || ''}`
+        .toLowerCase()
+        .includes(search.toLowerCase())
+    )
 
   return (
     <Card className="border p-6 space-y-4">
@@ -54,6 +58,7 @@ export function IncomingTable({
           <h2 className="text-xl font-bold">
             {hideAction ? '📦 Incoming History' : '📥 Incoming Queue'}
           </h2>
+
           {!hideAction && (
             <p className="text-xs text-slate-500">
               Click OUT to release stock → QC
@@ -81,7 +86,6 @@ export function IncomingTable({
               <th>IN</th>
               <th>REM</th>
               <th>STATUS</th>
-
               {!hideAction && <th>OUT</th>}
             </tr>
           </thead>
@@ -95,6 +99,7 @@ export function IncomingTable({
               </tr>
             ) : (
               filtered.map(tx => {
+
                 const percent =
                   tx.incomingQty > 0
                     ? (tx.remainingQty / tx.incomingQty) * 100
@@ -102,9 +107,12 @@ export function IncomingTable({
 
                 return (
                   <Fragment key={tx.id}>
+
                     <tr className="border-b hover:bg-slate-50 text-center">
 
-                      <td>{new Date(tx.date).toLocaleDateString('id-ID')}</td>
+                      <td>
+                        {new Date(tx.date).toLocaleDateString('id-ID')}
+                      </td>
 
                       <td className="font-mono text-blue-700">
                         {tx.computerCode}
@@ -120,6 +128,7 @@ export function IncomingTable({
 
                       <td className="font-bold text-orange-600">
                         {tx.remainingQty}
+
                         <div className="h-1 bg-slate-200 rounded mt-1 mx-3">
                           <div
                             className="h-1 bg-orange-500 rounded"
@@ -143,6 +152,7 @@ export function IncomingTable({
                       {!hideAction && (
                         <td>
                           <div className="flex justify-center gap-1">
+
                             <Button
                               size="sm"
                               disabled={tx.remainingQty <= 0}
@@ -155,14 +165,18 @@ export function IncomingTable({
                               size="sm"
                               variant="outline"
                               onClick={() =>
-                                setExpandedId(expandedId === tx.id ? null : tx.id)
+                                setExpandedId(
+                                  expandedId === tx.id ? null : tx.id
+                                )
                               }
                             >
                               History
                             </Button>
+
                           </div>
                         </td>
                       )}
+
                     </tr>
 
                     {expandedId === tx.id && (
@@ -186,6 +200,7 @@ export function IncomingTable({
                             </div>
 
                             {tx.outgoingTransactions?.length ? (
+
                               <div className="space-y-2">
 
                                 {tx.outgoingTransactions.map(h => (
@@ -193,10 +208,12 @@ export function IncomingTable({
                                     key={h.id}
                                     className="flex justify-between items-center bg-white rounded-lg border px-4 py-2 shadow-sm"
                                   >
+
                                     <div className="space-y-0.5">
                                       <p className="text-xs text-slate-500">
                                         {new Date(h.createdAt).toLocaleString()}
                                       </p>
+
                                       <p className="text-xs font-medium">
                                         Operator: {h.responsiblePerson}
                                       </p>
@@ -205,14 +222,18 @@ export function IncomingTable({
                                     <span className="text-sm font-bold text-red-600">
                                       -{h.qtyOut}
                                     </span>
+
                                   </div>
                                 ))}
 
                               </div>
+
                             ) : (
+
                               <p className="text-xs text-slate-400 italic">
                                 No outgoing history
                               </p>
+
                             )}
 
                           </div>
@@ -226,6 +247,7 @@ export function IncomingTable({
               })
             )}
           </tbody>
+
         </table>
       </div>
 
