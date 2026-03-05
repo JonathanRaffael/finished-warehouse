@@ -12,6 +12,7 @@ interface Transaction {
   spareQty: number
   responsiblePerson: string | null
   afterOQC: {
+    id: string
     computerCode: string
     partNo: string
     productName: string
@@ -34,15 +35,16 @@ export function AfterOQCTable({ transactions }: Props) {
       new Date(b.createdAt).getTime()
   )
 
-  /* ================= GROUP DATA ================= */
+  /* ================= GROUP BY QUEUE ID ================= */
 
   const grouped = Object.values(
     sortedTransactions.reduce((acc: any, row) => {
-      const code = row.afterOQC.computerCode
 
-      if (!acc[code]) {
-        acc[code] = {
-          id: code,
+      const queueId = row.afterOQC.id
+
+      if (!acc[queueId]) {
+        acc[queueId] = {
+          id: queueId,
           computerCode: row.afterOQC.computerCode,
           partNo: row.afterOQC.partNo,
           productName: row.afterOQC.productName,
@@ -53,32 +55,34 @@ export function AfterOQCTable({ transactions }: Props) {
         }
       }
 
-      acc[code].history.push(row)
-      acc[code].after += row.okQty || 0
-      acc[code].ng += row.ngQty || 0
-      acc[code].spare += row.spareQty || 0
+      acc[queueId].history.push(row)
+      acc[queueId].after += row.okQty || 0
+      acc[queueId].ng += row.ngQty || 0
+      acc[queueId].spare += row.spareQty || 0
 
       return acc
     }, {})
   )
-    .map((group: any) => {
-      /* ================= SORT HISTORY INSIDE GROUP ================= */
-      group.history.sort(
-        (a: any, b: any) =>
-          new Date(a.createdAt).getTime() -
-          new Date(b.createdAt).getTime()
-      )
-      return group
-    })
-    .filter(
-      (r: any) =>
-        r.computerCode.toLowerCase().includes(search.toLowerCase()) ||
-        r.productName.toLowerCase().includes(search.toLowerCase()) ||
-        r.partNo.toLowerCase().includes(search.toLowerCase())
+  .map((group: any) => {
+
+    group.history.sort(
+      (a: any, b: any) =>
+        new Date(a.createdAt).getTime() -
+        new Date(b.createdAt).getTime()
     )
+
+    return group
+  })
+  .filter(
+    (r: any) =>
+      r.computerCode.toLowerCase().includes(search.toLowerCase()) ||
+      r.productName.toLowerCase().includes(search.toLowerCase()) ||
+      r.partNo.toLowerCase().includes(search.toLowerCase())
+  )
 
   return (
     <Card className="p-6 border">
+
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-bold">✅ QC History</h2>
 
@@ -91,7 +95,9 @@ export function AfterOQCTable({ transactions }: Props) {
       </div>
 
       <div className="overflow-x-auto">
+
         <table className="w-full text-sm border-collapse">
+
           <thead>
             <tr className="bg-emerald-600 text-white">
               {['CODE','PART','PRODUCT','IN','OK','NG','SPARE','TOTAL STOCK'].map(h => (
@@ -101,17 +107,31 @@ export function AfterOQCTable({ transactions }: Props) {
           </thead>
 
           <tbody>
+
             {grouped.map((row:any) => {
+
               const totalIn = row.after + row.ng + row.spare
 
               return (
                 <Fragment key={row.id}>
-                  <tr className="border-b hover:bg-emerald-50">
-                    <td className="px-3 py-2 font-mono">{row.computerCode}</td>
-                    <td className="px-3 py-2 font-mono">{row.partNo}</td>
-                    <td className="px-3 py-2">{row.productName}</td>
 
-                    <td className="px-3 py-2">{totalIn}</td>
+                  <tr className="border-b hover:bg-emerald-50">
+
+                    <td className="px-3 py-2 font-mono">
+                      {row.computerCode}
+                    </td>
+
+                    <td className="px-3 py-2 font-mono">
+                      {row.partNo}
+                    </td>
+
+                    <td className="px-3 py-2">
+                      {row.productName}
+                    </td>
+
+                    <td className="px-3 py-2">
+                      {totalIn}
+                    </td>
 
                     <td className="px-3 py-2 text-green-600 font-semibold">
                       {row.after}
@@ -121,7 +141,9 @@ export function AfterOQCTable({ transactions }: Props) {
                       {row.ng}
                     </td>
 
-                    <td className="px-3 py-2">{row.spare}</td>
+                    <td className="px-3 py-2">
+                      {row.spare}
+                    </td>
 
                     <td
                       className="px-3 py-2 font-bold text-blue-600 cursor-pointer hover:underline"
@@ -129,14 +151,21 @@ export function AfterOQCTable({ transactions }: Props) {
                     >
                       {row.after + row.spare}
                     </td>
+
                   </tr>
 
                   {open === row.id && (
+
                     <tr className="bg-slate-50">
+
                       <td colSpan={8} className="p-4">
-                        <p className="font-semibold mb-2">Inspection History</p>
+
+                        <p className="font-semibold mb-2">
+                          Inspection History
+                        </p>
 
                         <table className="w-full text-xs border">
+
                           <thead className="bg-slate-200">
                             <tr>
                               {['DATE','IN','OK','NG','SPARE','QC BY'].map(h => (
@@ -146,8 +175,11 @@ export function AfterOQCTable({ transactions }: Props) {
                           </thead>
 
                           <tbody>
+
                             {row.history.map((h:any) => (
+
                               <tr key={h.id}>
+
                                 <td className="border px-2 py-1">
                                   {new Date(h.createdAt).toLocaleString()}
                                 </td>
@@ -171,20 +203,31 @@ export function AfterOQCTable({ transactions }: Props) {
                                 <td className="border px-2 py-1">
                                   {h.responsiblePerson}
                                 </td>
+
                               </tr>
+
                             ))}
+
                           </tbody>
 
                         </table>
+
                       </td>
+
                     </tr>
+
                   )}
+
                 </Fragment>
               )
             })}
+
           </tbody>
+
         </table>
+
       </div>
+
     </Card>
   )
 }
