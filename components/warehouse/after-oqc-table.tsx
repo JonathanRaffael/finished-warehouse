@@ -26,8 +26,18 @@ export function AfterOQCTable({ transactions }: Props) {
   const [search, setSearch] = useState('')
   const [open, setOpen] = useState<string | null>(null)
 
+  /* ================= SORT BY CREATED DATE ================= */
+
+  const sortedTransactions = [...transactions].sort(
+    (a, b) =>
+      new Date(a.createdAt).getTime() -
+      new Date(b.createdAt).getTime()
+  )
+
+  /* ================= GROUP DATA ================= */
+
   const grouped = Object.values(
-    transactions.reduce((acc: any, row) => {
+    sortedTransactions.reduce((acc: any, row) => {
       const code = row.afterOQC.computerCode
 
       if (!acc[code]) {
@@ -50,12 +60,22 @@ export function AfterOQCTable({ transactions }: Props) {
 
       return acc
     }, {})
-  ).filter(
-    (r: any) =>
-      r.computerCode.toLowerCase().includes(search.toLowerCase()) ||
-      r.productName.toLowerCase().includes(search.toLowerCase()) ||
-      r.partNo.toLowerCase().includes(search.toLowerCase())
   )
+    .map((group: any) => {
+      /* ================= SORT HISTORY INSIDE GROUP ================= */
+      group.history.sort(
+        (a: any, b: any) =>
+          new Date(a.createdAt).getTime() -
+          new Date(b.createdAt).getTime()
+      )
+      return group
+    })
+    .filter(
+      (r: any) =>
+        r.computerCode.toLowerCase().includes(search.toLowerCase()) ||
+        r.productName.toLowerCase().includes(search.toLowerCase()) ||
+        r.partNo.toLowerCase().includes(search.toLowerCase())
+    )
 
   return (
     <Card className="p-6 border">
@@ -136,13 +156,25 @@ export function AfterOQCTable({ transactions }: Props) {
                                   {h.okQty + h.ngQty + h.spareQty}
                                 </td>
 
-                                <td className="border px-2 py-1 text-green-600">{h.okQty}</td>
-                                <td className="border px-2 py-1 text-red-600">{h.ngQty}</td>
-                                <td className="border px-2 py-1">{h.spareQty}</td>
-                                <td className="border px-2 py-1">{h.responsiblePerson}</td>
+                                <td className="border px-2 py-1 text-green-600">
+                                  {h.okQty}
+                                </td>
+
+                                <td className="border px-2 py-1 text-red-600">
+                                  {h.ngQty}
+                                </td>
+
+                                <td className="border px-2 py-1">
+                                  {h.spareQty}
+                                </td>
+
+                                <td className="border px-2 py-1">
+                                  {h.responsiblePerson}
+                                </td>
                               </tr>
                             ))}
                           </tbody>
+
                         </table>
                       </td>
                     </tr>
