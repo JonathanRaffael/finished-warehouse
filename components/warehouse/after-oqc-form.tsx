@@ -39,7 +39,9 @@ export function AfterOQCForm({ onSuccess, selectedQueue }: AfterOQCFormProps) {
   }, [selectedQueue])
 
   const stockTotal = ok + spare
-  const isInvalid = stockTotal > before || !responsiblePerson
+
+  // hanya cek responsible person
+  const isInvalid = !responsiblePerson
 
   /* ================= SUBMIT ================= */
 
@@ -126,17 +128,29 @@ export function AfterOQCForm({ onSuccess, selectedQueue }: AfterOQCFormProps) {
 
         <div>
           <label className="text-xs">OK</label>
-          <Input type="number" value={ok} onChange={e => setOk(+e.target.value)} />
+          <Input
+            type="number"
+            value={ok}
+            onChange={e => setOk(Number(e.target.value))}
+          />
         </div>
 
         <div>
           <label className="text-xs">Spare</label>
-          <Input type="number" value={spare} onChange={e => setSpare(+e.target.value)} />
+          <Input
+            type="number"
+            value={spare}
+            onChange={e => setSpare(Number(e.target.value))}
+          />
         </div>
 
         <div>
           <label className="text-xs">NG</label>
-          <Input type="number" value={ng} onChange={e => setNg(+e.target.value)} />
+          <Input
+            type="number"
+            value={ng}
+            onChange={e => setNg(Number(e.target.value))}
+          />
         </div>
       </div>
 
@@ -146,7 +160,11 @@ export function AfterOQCForm({ onSuccess, selectedQueue }: AfterOQCFormProps) {
           Stock Total (OK + Spare)
         </span>
 
-        <span className={`font-bold ${stockTotal <= before ? 'text-green-600' : 'text-red-600'}`}>
+        <span
+          className={`font-bold ${
+            stockTotal <= before ? 'text-green-600' : 'text-yellow-600'
+          }`}
+        >
           {stockTotal} / {before}
         </span>
       </div>
