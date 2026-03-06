@@ -3,6 +3,7 @@
 import { useState, Fragment } from 'react'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
 
 interface Transaction {
   id: string
@@ -24,10 +25,14 @@ interface Props {
 }
 
 export function AfterOQCTable({ transactions }: Props) {
+
   const [search, setSearch] = useState('')
   const [open, setOpen] = useState<string | null>(null)
+  const [page, setPage] = useState(1)
 
-  /* ================= SORT BY CREATED DATE ================= */
+  const limit = 10
+
+  /* ================= SORT ================= */
 
   const sortedTransactions = [...transactions].sort(
     (a, b) =>
@@ -35,7 +40,7 @@ export function AfterOQCTable({ transactions }: Props) {
       new Date(b.createdAt).getTime()
   )
 
-  /* ================= GROUP BY QUEUE ID ================= */
+  /* ================= GROUP ================= */
 
   const grouped = Object.values(
     sortedTransactions.reduce((acc: any, row) => {
@@ -61,6 +66,7 @@ export function AfterOQCTable({ transactions }: Props) {
       acc[queueId].spare += row.spareQty || 0
 
       return acc
+
     }, {})
   )
   .map((group: any) => {
@@ -72,6 +78,7 @@ export function AfterOQCTable({ transactions }: Props) {
     )
 
     return group
+
   })
   .filter(
     (r: any) =>
@@ -80,147 +87,199 @@ export function AfterOQCTable({ transactions }: Props) {
       r.partNo.toLowerCase().includes(search.toLowerCase())
   )
 
-  return (
-    <Card className="p-6 border">
+  /* ================= PAGINATION ================= */
 
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-bold">✅ QC History</h2>
+  const totalPages = Math.ceil(grouped.length / limit)
+
+  const paginated = grouped.slice(
+    (page - 1) * limit,
+    page * limit
+  )
+
+  return (
+
+    <Card className="border p-6 space-y-4">
+
+      {/* HEADER */}
+
+      <div className="flex items-center justify-between">
+
+        <h2 className="text-xl font-bold">
+          📦 QC History
+        </h2>
 
         <Input
           placeholder="Search code / part / product..."
           value={search}
-          onChange={e => setSearch(e.target.value)}
+          onChange={e => {
+            setSearch(e.target.value)
+            setPage(1)
+          }}
           className="max-w-sm"
         />
+
       </div>
 
-      <div className="overflow-x-auto">
+      {/* TABLE */}
 
-        <table className="w-full text-sm border-collapse">
+      <div className="overflow-x-auto border rounded-lg">
 
-          <thead>
-            <tr className="bg-emerald-600 text-white">
-              {['CODE','PART','PRODUCT','IN','OK','NG','SPARE','TOTAL STOCK'].map(h => (
-                <th key={h} className="border px-3 py-2 text-left">{h}</th>
-              ))}
+        <table className="w-full text-sm">
+
+          <thead className="bg-slate-100">
+
+            <tr className="text-center">
+
+              <th className="py-3 px-4">CODE</th>
+              <th className="px-4">PART</th>
+              <th className="px-4">PRODUCT</th>
+              <th className="px-4">IN</th>
+              <th className="px-4">OK</th>
+              <th className="px-4">NG</th>
+              <th className="px-4">SPARE</th>
+              <th className="px-4">STOCK</th>
+
             </tr>
+
           </thead>
 
           <tbody>
 
-            {grouped.map((row:any) => {
+            {paginated.length === 0 ? (
 
-              const totalIn = row.after + row.ng + row.spare
+              <tr>
+                <td colSpan={8} className="text-center py-10 text-slate-400">
+                  No QC history
+                </td>
+              </tr>
 
-              return (
-                <Fragment key={row.id}>
+            ) : (
 
-                  <tr className="border-b hover:bg-emerald-50">
+              paginated.map((row: any) => {
 
-                    <td className="px-3 py-2 font-mono">
-                      {row.computerCode}
-                    </td>
+                const totalIn = row.after + row.ng + row.spare
 
-                    <td className="px-3 py-2 font-mono">
-                      {row.partNo}
-                    </td>
+                return (
 
-                    <td className="px-3 py-2">
-                      {row.productName}
-                    </td>
+                  <Fragment key={row.id}>
 
-                    <td className="px-3 py-2">
-                      {totalIn}
-                    </td>
+                    <tr className="border-b hover:bg-slate-50 text-center">
 
-                    <td className="px-3 py-2 text-green-600 font-semibold">
-                      {row.after}
-                    </td>
+                      <td className="px-4 py-2 font-mono text-blue-600">
+                        {row.computerCode}
+                      </td>
 
-                    <td className="px-3 py-2 text-red-600 font-semibold">
-                      {row.ng}
-                    </td>
+                      <td className="px-4 py-2">
+                        {row.partNo}
+                      </td>
 
-                    <td className="px-3 py-2">
-                      {row.spare}
-                    </td>
+                      <td className="px-4 py-2 text-slate-700">
+                        {row.productName}
+                      </td>
 
-                    <td
-                      className="px-3 py-2 font-bold text-blue-600 cursor-pointer hover:underline"
-                      onClick={() => setOpen(open === row.id ? null : row.id)}
-                    >
-                      {row.after + row.spare}
-                    </td>
+                      <td className="px-4 py-2">
+                        {totalIn}
+                      </td>
 
-                  </tr>
+                      <td className="px-4 py-2 font-bold text-green-600">
+                        {row.after}
+                      </td>
 
-                  {open === row.id && (
+                      <td className="px-4 py-2 font-bold text-red-600">
+                        {row.ng}
+                      </td>
 
-                    <tr className="bg-slate-50">
+                      <td className="px-4 py-2">
+                        {row.spare}
+                      </td>
 
-                      <td colSpan={8} className="p-4">
-
-                        <p className="font-semibold mb-2">
-                          Inspection History
-                        </p>
-
-                        <table className="w-full text-xs border">
-
-                          <thead className="bg-slate-200">
-                            <tr>
-                              {['DATE','IN','OK','NG','SPARE','QC BY'].map(h => (
-                                <th key={h} className="border px-2 py-1">{h}</th>
-                              ))}
-                            </tr>
-                          </thead>
-
-                          <tbody>
-
-                            {row.history.map((h:any) => (
-
-                              <tr key={h.id}>
-
-                                <td className="border px-2 py-1">
-                                  {new Date(h.createdAt).toLocaleString()}
-                                </td>
-
-                                <td className="border px-2 py-1">
-                                  {h.okQty + h.ngQty + h.spareQty}
-                                </td>
-
-                                <td className="border px-2 py-1 text-green-600">
-                                  {h.okQty}
-                                </td>
-
-                                <td className="border px-2 py-1 text-red-600">
-                                  {h.ngQty}
-                                </td>
-
-                                <td className="border px-2 py-1">
-                                  {h.spareQty}
-                                </td>
-
-                                <td className="border px-2 py-1">
-                                  {h.responsiblePerson}
-                                </td>
-
-                              </tr>
-
-                            ))}
-
-                          </tbody>
-
-                        </table>
-
+                      <td
+                        className="px-4 py-2 font-bold text-blue-600 cursor-pointer hover:underline"
+                        onClick={() =>
+                          setOpen(open === row.id ? null : row.id)
+                        }
+                      >
+                        {row.after + row.spare}
                       </td>
 
                     </tr>
 
-                  )}
+                    {open === row.id && (
 
-                </Fragment>
-              )
-            })}
+                      <tr>
+
+                        <td colSpan={8} className="bg-slate-50 px-8 py-4">
+
+                          <p className="font-semibold mb-3 text-slate-600">
+                            Inspection History
+                          </p>
+
+                          <table className="w-full text-xs border rounded">
+
+                            <thead className="bg-slate-200">
+
+                              <tr>
+                                <th className="border px-3 py-2">DATE</th>
+                                <th className="border px-3 py-2">IN</th>
+                                <th className="border px-3 py-2">OK</th>
+                                <th className="border px-3 py-2">NG</th>
+                                <th className="border px-3 py-2">SPARE</th>
+                                <th className="border px-3 py-2">QC BY</th>
+                              </tr>
+
+                            </thead>
+
+                            <tbody>
+
+                              {row.history.map((h: any) => (
+
+                                <tr key={h.id} className="text-center">
+
+                                  <td className="border px-3 py-2">
+                                    {new Date(h.createdAt).toLocaleString()}
+                                  </td>
+
+                                  <td className="border px-3 py-2">
+                                    {h.okQty + h.ngQty + h.spareQty}
+                                  </td>
+
+                                  <td className="border px-3 py-2 text-green-600">
+                                    {h.okQty}
+                                  </td>
+
+                                  <td className="border px-3 py-2 text-red-600">
+                                    {h.ngQty}
+                                  </td>
+
+                                  <td className="border px-3 py-2">
+                                    {h.spareQty}
+                                  </td>
+
+                                  <td className="border px-3 py-2">
+                                    {h.responsiblePerson}
+                                  </td>
+
+                                </tr>
+
+                              ))}
+
+                            </tbody>
+
+                          </table>
+
+                        </td>
+
+                      </tr>
+
+                    )}
+
+                  </Fragment>
+
+                )
+
+              })
+
+            )}
 
           </tbody>
 
@@ -228,6 +287,39 @@ export function AfterOQCTable({ transactions }: Props) {
 
       </div>
 
+      {/* PAGINATION */}
+
+      <div className="flex items-center justify-between pt-2">
+
+        <p className="text-sm text-slate-500">
+          Page {page} of {totalPages || 1}
+        </p>
+
+        <div className="flex gap-2">
+
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={page === 1}
+            onClick={() => setPage(p => p - 1)}
+          >
+            Previous
+          </Button>
+
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={page === totalPages || totalPages === 0}
+            onClick={() => setPage(p => p + 1)}
+          >
+            Next
+          </Button>
+
+        </div>
+
+      </div>
+
     </Card>
+
   )
 }

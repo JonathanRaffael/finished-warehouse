@@ -19,9 +19,11 @@ interface OutgoingTableProps {
 }
 
 export function OutgoingTable({ transactions }: OutgoingTableProps) {
+
   const [search, setSearch] = useState('')
 
   const filteredTransactions = transactions.filter(tx => {
+
     const code = tx.computerCode || ''
     const part = tx.partNo || ''
     const product = tx.productName || ''
@@ -31,83 +33,124 @@ export function OutgoingTable({ transactions }: OutgoingTableProps) {
       product.toLowerCase().includes(search.toLowerCase()) ||
       part.toLowerCase().includes(search.toLowerCase())
     )
+
   })
 
   return (
-    <Card className="border-slate-200 p-6">
-      <div className="mb-6">
-        <h2 className="text-xl font-bold text-slate-900 mb-4">
-          Outgoing Transactions
+
+    <Card className="p-6 border space-y-4">
+
+      {/* HEADER */}
+
+      <div className="flex items-center justify-between">
+
+        <h2 className="text-lg font-bold">
+          📤 Outgoing Transactions
         </h2>
 
         <Input
-          type="text"
-          placeholder="Search by Computer Code, Product Name, or Part No..."
+          placeholder="Search code / part / product..."
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="border-slate-300"
+          onChange={e => setSearch(e.target.value)}
+          className="max-w-sm"
         />
+
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse">
-          <thead>
-            <tr className="bg-teal-600 text-white">
-              <th className="border px-4 py-3 text-left text-sm font-semibold">DATE</th>
-              <th className="border px-4 py-3 text-left text-sm font-semibold">COMPUTER CODE</th>
-              <th className="border px-4 py-3 text-left text-sm font-semibold">PART NO</th>
-              <th className="border px-4 py-3 text-left text-sm font-semibold">PRODUCT NAME</th>
-              <th className="border px-4 py-3 text-center text-sm font-semibold bg-red-600">QTY OUT</th>
-              <th className="border px-4 py-3 text-left text-sm font-semibold">RESPONSIBLE</th>
+      {/* TABLE */}
+
+      <div className="overflow-x-auto border rounded-lg">
+
+        <table className="min-w-full text-sm">
+
+          <thead className="bg-slate-100">
+
+            <tr className="text-center">
+
+              <th className="py-3 px-3 text-left">DATE</th>
+              <th className="px-3 text-left">CODE</th>
+              <th className="px-3 text-left">PART</th>
+              <th className="px-3 text-left">PRODUCT</th>
+              <th className="px-3 text-center text-red-600">QTY OUT</th>
+              <th className="px-3 text-left">RESPONSIBLE</th>
+
             </tr>
+
           </thead>
 
           <tbody>
+
             {filteredTransactions.length === 0 ? (
+
               <tr>
-                <td colSpan={6} className="text-center py-8 text-slate-500">
-                  No transactions found
+                <td colSpan={6} className="text-center py-10 text-slate-400">
+                  No outgoing transactions
                 </td>
               </tr>
+
             ) : (
+
               filteredTransactions.map((tx, index) => (
+
                 <tr
                   key={tx.id}
-                  className={`${index % 2 === 0 ? 'bg-white' : 'bg-slate-50'} hover:bg-red-50`}
+                  className={`border-b hover:bg-red-50 ${
+                    index % 2 === 0 ? 'bg-white' : 'bg-slate-50'
+                  }`}
                 >
-                  <td className="border px-4 py-3 text-sm">
+
+                  <td className="px-3 py-3 text-sm">
                     {new Date(tx.date).toLocaleDateString('id-ID')}
                   </td>
 
-                  <td className="border px-4 py-3 text-sm font-mono font-semibold">
+                  <td className="px-3 py-3 font-mono font-semibold text-blue-600">
                     {tx.computerCode || '-'}
                   </td>
 
-                  <td className="border px-4 py-3 text-sm font-mono">
+                  <td className="px-3 py-3 font-mono">
                     {tx.partNo || '-'}
                   </td>
 
-                  <td className="border px-4 py-3 text-sm">
+                  <td className="px-3 py-3 text-slate-700">
                     {tx.productName || '-'}
                   </td>
 
-                  <td className="border px-4 py-3 text-center text-sm font-bold text-red-600 bg-red-50">
+                  <td className="px-3 py-3 text-center font-bold text-red-600">
                     -{tx.qtyOut}
                   </td>
 
-                  <td className="border px-4 py-3 text-sm">
+                  <td className="px-3 py-3">
                     {tx.responsiblePerson}
                   </td>
+
                 </tr>
+
               ))
+
             )}
+
           </tbody>
+
         </table>
+
       </div>
 
-      <div className="mt-4 text-sm text-slate-600">
-        Showing {filteredTransactions.length} of {transactions.length} transactions
+      {/* FOOTER */}
+
+      <div className="flex justify-between text-xs text-slate-500 pt-2">
+
+        <span>
+          Total Records: {transactions.length}
+        </span>
+
+        <span>
+          Showing: {filteredTransactions.length}
+        </span>
+
       </div>
+
     </Card>
+
   )
+
 }

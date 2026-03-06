@@ -153,9 +153,6 @@ model AfterOQCLog {
   @@index([afterOQCId])
 }
 
-//
-// OUTGOING
-//
 model OutgoingTransaction {
   id String @id @default(cuid())
 
@@ -167,6 +164,8 @@ model OutgoingTransaction {
 
   qtyOut Int
   responsiblePerson String @db.VarChar(100)
+
+  remark String? @db.VarChar(255)
 
   product Product? @relation(fields: [computerCode], references: [computerCode], onDelete: Cascade)
 

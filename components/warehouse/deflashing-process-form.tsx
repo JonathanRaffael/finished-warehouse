@@ -12,6 +12,7 @@ interface Props {
 }
 
 export function DeflashingProcessForm({ data, onSuccess }: Props) {
+
   const { toast } = useToast()
 
   const [qtyOut, setQtyOut] = useState(0)
@@ -20,26 +21,41 @@ export function DeflashingProcessForm({ data, onSuccess }: Props) {
   const [processedBy, setProcessedBy] = useState('')
   const [loading, setLoading] = useState(false)
 
-  // 🔥 Remaining dihitung dari processedQty
+  /* ================= REMAINING ================= */
+
   const remaining = useMemo(
     () => data.qtyIn - data.processedQty,
     [data]
   )
 
-  const processNow = qtyOut + ngQty
-  const afterThis = remaining - processNow
+  /* ================= CALCULATION ================= */
+
+  // Queue hanya berkurang dari OK
+  const processNow = qtyOut
+
+  // Remaining setelah proses ini
+  const afterThis = remaining - qtyOut
+
+  // Final stock (NG tidak dihitung)
+  const finalStock = qtyOut + spareQty
 
   const isValid =
-    processNow > 0 &&
-    processNow <= remaining &&
+    qtyOut > 0 &&
+    qtyOut <= remaining &&
     processedBy.trim() !== ''
 
+  const progressPercent =
+    ((data.processedQty + qtyOut) / data.qtyIn) * 100
+
+  /* ================= SUBMIT ================= */
+
   const handleSubmit = async () => {
+
     if (!isValid) {
       toast({
         variant: 'destructive',
         title: 'Invalid Quantity',
-        description: 'Processing exceeds remaining quantity'
+        description: 'OK quantity exceeds remaining quantity'
       })
       return
     }
@@ -47,26 +63,26 @@ export function DeflashingProcessForm({ data, onSuccess }: Props) {
     setLoading(true)
 
     try {
-      const res = await fetch(
-        `/api/deflashing/${data.id}/process`,
-        {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            qtyOut,
-            ngQty,
-            spareQty,
-            processedBy
-          })
-        }
-      )
+
+      const res = await fetch(`/api/deflashing/${data.id}/process`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          qtyOut,
+          ngQty,
+          spareQty,
+          finalStock,
+          processedBy
+        })
+      })
 
       if (!res.ok) throw new Error()
 
       toast({
-        title: afterThis === 0
-          ? 'Deflashing Completed'
-          : 'Partial Process Saved',
+        title:
+          afterThis === 0
+            ? 'Deflashing Completed'
+            : 'Partial Process Saved',
         description:
           afterThis === 0
             ? 'All quantity has been processed'
@@ -76,117 +92,189 @@ export function DeflashingProcessForm({ data, onSuccess }: Props) {
       onSuccess()
 
     } catch {
+
       toast({
         variant: 'destructive',
         title: 'Error',
         description: 'Failed to process deflashing'
       })
+
     } finally {
+
       setLoading(false)
+
     }
+
   }
 
-  const progressPercent =
-    ((data.processedQty + processNow) / data.qtyIn) * 100
-
   return (
-    <Card className="p-8 space-y-6 border shadow-md bg-white">
+
+    <Card className="p-6 space-y-6 border">
+
+      {/* HEADER */}
 
       <div className="flex justify-between items-center">
-        <h2 className="text-lg font-semibold">
+
+        <h2 className="text-lg font-bold">
           ⚙️ Processing Panel
         </h2>
 
-        <span className="text-xs bg-orange-100 text-orange-700 px-3 py-1 rounded">
+        <span className="text-xs px-3 py-1 bg-orange-100 text-orange-700 rounded">
           Remaining: {remaining}
         </span>
+
       </div>
 
-      {/* Product Info */}
-      <div className="bg-slate-50 p-4 rounded border">
-        <p className="font-semibold">{data.computerCode}</p>
-        <p className="text-xs text-slate-500">
-          Total Incoming: {data.qtyIn}
-        </p>
-        <p className="text-xs text-blue-600">
-          Already Processed: {data.processedQty}
-        </p>
-      </div>
+      {/* PRODUCT INFO */}
 
-      {/* Quantity Input */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-3 gap-4 bg-slate-50 border rounded p-4">
+
         <div>
-          <p className="text-xs text-slate-500">OK</p>
+          <p className="text-xs text-slate-500">
+            Computer Code
+          </p>
+
+          <p className="font-mono font-semibold text-blue-600">
+            {data.computerCode}
+          </p>
+        </div>
+
+        <div>
+          <p className="text-xs text-slate-500">
+            Total Incoming
+          </p>
+
+          <p className="font-semibold">
+            {data.qtyIn}
+          </p>
+        </div>
+
+        <div>
+          <p className="text-xs text-slate-500">
+            Already Processed
+          </p>
+
+          <p className="font-semibold text-blue-600">
+            {data.processedQty}
+          </p>
+        </div>
+
+      </div>
+
+      {/* INPUT QTY */}
+
+      <div className="grid grid-cols-3 gap-4">
+
+        <div>
+          <label className="text-xs text-slate-500">
+            OK
+          </label>
+
           <Input
             type="number"
             min={0}
-            max={remaining}
             value={qtyOut}
             onChange={e => setQtyOut(Number(e.target.value))}
           />
+
         </div>
 
         <div>
-          <p className="text-xs text-slate-500">NG</p>
+          <label className="text-xs text-slate-500">
+            NG
+          </label>
+
           <Input
             type="number"
             min={0}
-            max={remaining}
             value={ngQty}
             onChange={e => setNgQty(Number(e.target.value))}
           />
+
         </div>
 
         <div>
-          <p className="text-xs text-slate-500">Spare</p>
+          <label className="text-xs text-slate-500">
+            Spare
+          </label>
+
           <Input
             type="number"
             min={0}
             value={spareQty}
             onChange={e => setSpareQty(Number(e.target.value))}
           />
+
         </div>
+
       </div>
 
-      {/* Live Calculation */}
-      <div className="text-sm space-y-1 bg-slate-50 p-4 rounded border">
-        <p>
-          Processing Now:{' '}
+      {/* SUMMARY */}
+
+      <div className="bg-slate-100 rounded px-4 py-3 space-y-2">
+
+        <div className="flex justify-between text-sm">
+          <span>Processing Now (OK)</span>
           <span className="font-bold">
             {processNow}
           </span>
-        </p>
+        </div>
 
-        <p>
-          After This:{' '}
-          <span className={`font-bold ${
-            afterThis === 0
-              ? 'text-green-600'
-              : afterThis < 0
-              ? 'text-red-600'
-              : 'text-orange-600'
-          }`}>
+        <div className="flex justify-between text-sm">
+          <span>Remaining After This</span>
+          <span
+            className={`font-bold ${
+              afterThis === 0
+                ? 'text-green-600'
+                : afterThis < 0
+                ? 'text-red-600'
+                : 'text-orange-600'
+            }`}
+          >
             {afterThis}
           </span>
-        </p>
+        </div>
+
+        <div className="flex justify-between text-sm">
+          <span>Final Stock (OK + Spare)</span>
+          <span className="font-bold text-blue-600">
+            {finalStock}
+          </span>
+        </div>
+
       </div>
 
-      {/* Progress Bar */}
-      <div>
+      {/* PROGRESS */}
+
+      <div className="space-y-2">
+
+        <div className="flex justify-between text-xs text-slate-500">
+          <span>Deflashing Progress</span>
+          <span>{Math.round(progressPercent)}%</span>
+        </div>
+
         <div className="w-full bg-slate-200 rounded h-2">
+
           <div
             className="bg-blue-600 h-2 rounded transition-all"
-            style={{ width: `${Math.min(progressPercent, 100)}%` }}
+            style={{
+              width: `${Math.min(progressPercent, 100)}%`
+            }}
           />
+
         </div>
+
       </div>
 
-      {/* Operator */}
+      {/* OPERATOR */}
+
       <Input
         placeholder="Processed By *"
         value={processedBy}
         onChange={e => setProcessedBy(e.target.value)}
       />
+
+      {/* ACTION */}
 
       <Button
         onClick={handleSubmit}
@@ -205,5 +293,7 @@ export function DeflashingProcessForm({ data, onSuccess }: Props) {
       </Button>
 
     </Card>
+
   )
+
 }

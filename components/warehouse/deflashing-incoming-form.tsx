@@ -24,9 +24,11 @@ export function DeflashingIncomingForm({ onSuccess }: Props) {
   const [partNo, setPartNo] = useState('')
   const [productName, setProductName] = useState('')
   const [productionType, setProductionType] = useState<'HK' | 'HT'>('HT')
+
   const [incomingDate, setIncomingDate] = useState(
     new Date().toISOString().split('T')[0]
   )
+
   const [qtyIn, setQtyIn] = useState(0)
   const [incomingBy, setIncomingBy] = useState('')
   const [batchNo, setBatchNo] = useState('')
@@ -109,45 +111,65 @@ export function DeflashingIncomingForm({ onSuccess }: Props) {
   }
 
   return (
-    <Card className="p-8 space-y-8 border shadow-sm">
+    <Card className="p-6 space-y-6 border">
 
+      {/* HEADER */}
       <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold">
+        <h2 className="text-xl font-bold">
           📥 Deflashing Incoming
         </h2>
-        <span className="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded">
+
+        <span className="text-xs px-3 py-1 bg-blue-100 text-blue-700 rounded">
           NEW ENTRY
         </span>
       </div>
 
-      {/* PRODUCT INFO */}
-      <div className="space-y-4">
-        <h3 className="text-sm font-medium text-slate-600">
+      {/* PRODUCT INFORMATION */}
+      <div className="bg-slate-50 border rounded p-4 space-y-3">
+
+        <p className="text-xs text-slate-500">
           Product Information
-        </h3>
+        </p>
 
         <div className="grid grid-cols-3 gap-4">
+
           <Input
             placeholder="Computer Code *"
             value={computerCode}
             onChange={e => handleComputerCodeChange(e.target.value)}
+            className="font-mono"
           />
-          <Input value={partNo} readOnly placeholder="Part No" />
-          <Input value={productName} readOnly placeholder="Product Name" />
+
+          <Input
+            value={partNo}
+            readOnly
+            placeholder="Part No"
+          />
+
+          <Input
+            value={productName}
+            readOnly
+            placeholder="Product Name"
+          />
+
         </div>
+
       </div>
 
       {/* INCOMING DETAILS */}
-      <div className="space-y-4">
-        <h3 className="text-sm font-medium text-slate-600">
+
+      <div className="bg-slate-50 border rounded p-4 space-y-3">
+
+        <p className="text-xs text-slate-500">
           Incoming Details
-        </h3>
+        </p>
 
         <div className="grid grid-cols-4 gap-4">
+
           <select
             value={productionType}
             onChange={e => setProductionType(e.target.value as 'HK' | 'HT')}
-            className="border rounded px-3 py-2"
+            className="border rounded px-3 py-2 text-sm"
           >
             <option value="HT">HT</option>
             <option value="HK">HK</option>
@@ -165,6 +187,7 @@ export function DeflashingIncomingForm({ onSuccess }: Props) {
             placeholder="Incoming Qty *"
             value={qtyIn}
             onChange={e => setQtyIn(Number(e.target.value))}
+            className="font-bold text-center"
           />
 
           <Input
@@ -172,6 +195,7 @@ export function DeflashingIncomingForm({ onSuccess }: Props) {
             value={incomingBy}
             onChange={e => setIncomingBy(e.target.value)}
           />
+
         </div>
 
         <Input
@@ -179,12 +203,14 @@ export function DeflashingIncomingForm({ onSuccess }: Props) {
           value={batchNo}
           onChange={e => setBatchNo(e.target.value)}
         />
+
       </div>
 
+      {/* ACTION */}
       <Button
         onClick={handleSubmit}
         disabled={loading}
-        className="w-full bg-blue-600 text-white text-sm py-3"
+        className="w-full bg-blue-600 text-white"
       >
         {loading ? 'Saving Incoming...' : 'Save Incoming'}
       </Button>

@@ -41,7 +41,30 @@ export function IncomingTable({
   const [search, setSearch] = useState('')
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
-  // ✅ SORT berdasarkan urutan data pertama dibuat
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editQty, setEditQty] = useState<number>(0)
+
+  const [page, setPage] = useState(1)
+  const limit = 10
+
+  const startEdit = (tx: Transaction) => {
+    setEditingId(tx.id)
+    setEditQty(tx.incomingQty)
+  }
+
+  const cancelEdit = () => {
+    setEditingId(null)
+  }
+
+  const saveEdit = (tx: Transaction) => {
+    console.log('Update Incoming Qty', {
+      id: tx.id,
+      newQty: editQty
+    })
+
+    setEditingId(null)
+  }
+
   const filtered = [...transactions]
     .sort((a, b) => a.id.localeCompare(b.id))
     .filter(tx =>
@@ -50,10 +73,18 @@ export function IncomingTable({
         .includes(search.toLowerCase())
     )
 
+  const totalPages = Math.ceil(filtered.length / limit)
+
+  const paginated = filtered.slice(
+    (page - 1) * limit,
+    page * limit
+  )
+
   return (
     <Card className="border p-6 space-y-4">
 
       <div className="flex items-center justify-between">
+
         <div>
           <h2 className="text-xl font-bold">
             {hideAction ? '📦 Incoming History' : '📥 Incoming Queue'}
@@ -70,35 +101,41 @@ export function IncomingTable({
           className="max-w-sm"
           placeholder="Search code / part / product"
           value={search}
-          onChange={e => setSearch(e.target.value)}
+          onChange={e => {
+            setSearch(e.target.value)
+            setPage(1)
+          }}
         />
+
       </div>
 
       <div className="overflow-x-auto border rounded-lg">
+
         <table className="w-full text-xs">
 
           <thead className="bg-slate-100">
             <tr className="text-center">
-              <th className="py-2">DATE</th>
+              <th className="py-3">DATE</th>
               <th>CODE</th>
               <th>PART</th>
               <th>PRODUCT</th>
               <th>IN</th>
               <th>REM</th>
               <th>STATUS</th>
-              {!hideAction && <th>OUT</th>}
+              {!hideAction && <th>ACTION</th>}
             </tr>
           </thead>
 
           <tbody>
-            {filtered.length === 0 ? (
+
+            {paginated.length === 0 ? (
               <tr>
                 <td colSpan={hideAction ? 7 : 8} className="py-10 text-center text-slate-400">
-                  No incoming
+                  No incoming data
                 </td>
               </tr>
             ) : (
-              filtered.map(tx => {
+              paginated.map(tx => {
 
                 const percent =
                   tx.incomingQty > 0
@@ -114,32 +151,47 @@ export function IncomingTable({
                         {new Date(tx.date).toLocaleDateString('id-ID')}
                       </td>
 
-                      <td className="font-mono text-blue-700">
+                      <td className="font-mono text-blue-600">
                         {tx.computerCode}
                       </td>
 
                       <td>{tx.partNo}</td>
 
-                      <td>{tx.productName}</td>
+                      <td className="text-slate-700">
+                        {tx.productName}
+                      </td>
 
                       <td className="font-bold text-green-600">
-                        {tx.incomingQty}
+
+                        {editingId === tx.id ? (
+                          <Input
+                            type="number"
+                            value={editQty}
+                            onChange={e => setEditQty(Number(e.target.value))}
+                            className="w-20 mx-auto text-center"
+                          />
+                        ) : (
+                          tx.incomingQty
+                        )}
+
                       </td>
 
                       <td className="font-bold text-orange-600">
+
                         {tx.remainingQty}
 
-                        <div className="h-1 bg-slate-200 rounded mt-1 mx-3">
+                        <div className="h-1 bg-slate-200 rounded mt-1 mx-4">
                           <div
-                            className="h-1 bg-orange-500 rounded"
+                            className="h-1 bg-orange-500 rounded transition-all"
                             style={{ width: `${percent}%` }}
                           />
                         </div>
+
                       </td>
 
                       <td>
                         <span
-                          className={`inline-block px-2 py-1 text-[10px] rounded ${
+                          className={`px-2 py-1 text-[10px] rounded ${
                             tx.status === 'OPEN'
                               ? 'bg-green-100 text-green-700'
                               : 'bg-slate-200 text-slate-600'
@@ -151,41 +203,78 @@ export function IncomingTable({
 
                       {!hideAction && (
                         <td>
-                          <div className="flex justify-center gap-1">
 
-                            <Button
-                              size="sm"
-                              disabled={tx.remainingQty <= 0}
-                              onClick={() => onSelect?.(tx)}
-                            >
-                              OUT
-                            </Button>
+                          <div className="flex justify-center gap-2">
 
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() =>
-                                setExpandedId(
-                                  expandedId === tx.id ? null : tx.id
-                                )
-                              }
-                            >
-                              History
-                            </Button>
+                            {editingId === tx.id ? (
+
+                              <>
+                                <Button
+                                  size="sm"
+                                  onClick={() => saveEdit(tx)}
+                                >
+                                  Save
+                                </Button>
+
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={cancelEdit}
+                                >
+                                  Cancel
+                                </Button>
+                              </>
+
+                            ) : (
+
+                              <>
+                                <Button
+                                  size="sm"
+                                  disabled={tx.remainingQty <= 0}
+                                  onClick={() => onSelect?.(tx)}
+                                >
+                                  OUT
+                                </Button>
+
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() =>
+                                    setExpandedId(
+                                      expandedId === tx.id ? null : tx.id
+                                    )
+                                  }
+                                >
+                                  History
+                                </Button>
+
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  onClick={() => startEdit(tx)}
+                                >
+                                  Edit
+                                </Button>
+                              </>
+
+                            )}
 
                           </div>
+
                         </td>
                       )}
 
                     </tr>
 
                     {expandedId === tx.id && (
+
                       <tr>
                         <td colSpan={hideAction ? 7 : 8} className="bg-slate-50 px-12 py-4">
 
                           <div className="space-y-3">
 
                             <div className="flex justify-between items-center">
+
                               <p className="text-xs font-semibold text-slate-600">
                                 📤 Outgoing History
                               </p>
@@ -197,6 +286,7 @@ export function IncomingTable({
                                   0
                                 ) || 0}
                               </span>
+
                             </div>
 
                             {tx.outgoingTransactions?.length ? (
@@ -204,12 +294,14 @@ export function IncomingTable({
                               <div className="space-y-2">
 
                                 {tx.outgoingTransactions.map(h => (
+
                                   <div
                                     key={h.id}
-                                    className="flex justify-between items-center bg-white rounded-lg border px-4 py-2 shadow-sm"
+                                    className="flex justify-between items-center bg-white rounded border px-4 py-2"
                                   >
 
-                                    <div className="space-y-0.5">
+                                    <div>
+
                                       <p className="text-xs text-slate-500">
                                         {new Date(h.createdAt).toLocaleString()}
                                       </p>
@@ -217,6 +309,7 @@ export function IncomingTable({
                                       <p className="text-xs font-medium">
                                         Operator: {h.responsiblePerson}
                                       </p>
+
                                     </div>
 
                                     <span className="text-sm font-bold text-red-600">
@@ -224,6 +317,7 @@ export function IncomingTable({
                                     </span>
 
                                   </div>
+
                                 ))}
 
                               </div>
@@ -240,20 +334,51 @@ export function IncomingTable({
 
                         </td>
                       </tr>
+
                     )}
 
                   </Fragment>
                 )
               })
             )}
+
           </tbody>
 
         </table>
+
       </div>
 
-      <p className="text-xs text-slate-500">
-        Showing {filtered.length} record(s)
-      </p>
+      {/* Pagination */}
+
+      <div className="flex items-center justify-between pt-2">
+
+        <p className="text-xs text-slate-500">
+          Page {page} of {totalPages || 1}
+        </p>
+
+        <div className="flex gap-2">
+
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={page === 1}
+            onClick={() => setPage(p => p - 1)}
+          >
+            Previous
+          </Button>
+
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={page === totalPages || totalPages === 0}
+            onClick={() => setPage(p => p + 1)}
+          >
+            Next
+          </Button>
+
+        </div>
+
+      </div>
 
     </Card>
   )

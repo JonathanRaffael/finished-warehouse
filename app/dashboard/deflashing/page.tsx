@@ -2,30 +2,41 @@
 
 import { useEffect, useState } from 'react'
 import { Card } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { DeflashingIncomingForm } from '@/components/warehouse/deflashing-incoming-form'
 import { DeflashingProcessForm } from '@/components/warehouse/deflashing-process-form'
 
 export default function DeflashingPage() {
+
   const [pending, setPending] = useState<any[]>([])
   const [done, setDone] = useState<any[]>([])
   const [selected, setSelected] = useState<any | null>(null)
   const [loading, setLoading] = useState(false)
 
   const fetchData = async () => {
+
     setLoading(true)
+
     try {
+
       const res = await fetch('/api/deflashing', { cache: 'no-store' })
       const data = await res.json()
 
       setPending(data.pending || [])
       setDone(data.done || [])
+
     } catch (error) {
+
       console.error('[FETCH DEFLASHING ERROR]', error)
       setPending([])
       setDone([])
+
     } finally {
+
       setLoading(false)
+
     }
+
   }
 
   useEffect(() => {
@@ -33,77 +44,110 @@ export default function DeflashingPage() {
   }, [])
 
   return (
+
     <div className="space-y-8">
 
       {/* INCOMING */}
+
       <DeflashingIncomingForm onSuccess={fetchData} />
 
       {/* QUEUE */}
-      <Card className="p-6 shadow-sm">
-        <h2 className="font-semibold text-lg mb-5">
+
+      <Card className="p-6 space-y-4 border">
+
+        <h2 className="text-lg font-bold">
           🛠️ Deflashing Queue
         </h2>
 
-        {!loading && pending.length === 0 && (
-          <p className="text-sm text-slate-400">
-            No pending deflashing jobs
-          </p>
-        )}
+        <div className="overflow-x-auto border rounded-lg">
 
-        <div className="space-y-4">
-          {pending.map(item => {
-            const remaining = item.qtyIn - item.processedQty
-            const progress =
-              (item.processedQty / item.qtyIn) * 100
+          <table className="w-full text-sm">
 
-            return (
-              <div
-                key={item.id}
-                className="border rounded-lg p-4 hover:shadow transition"
-              >
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="font-semibold">
-                      {item.computerCode}
-                    </p>
-                    <p className="text-xs text-slate-500">
-  Batch: {item.batchNo ?? '-'}
-</p>
-                  </div>
+            <thead className="bg-slate-100">
 
-                  <button
-                    onClick={() => setSelected(item)}
-                    className="bg-blue-600 text-white text-xs px-4 py-2 rounded hover:bg-blue-700 transition"
+              <tr className="text-center">
+                <th className="py-3 px-4">CODE</th>
+                <th className="px-4">BATCH</th>
+                <th className="px-4">TOTAL</th>
+                <th className="px-4">PROCESSED</th>
+                <th className="px-4">REMAINING</th>
+                <th className="px-4">ACTION</th>
+              </tr>
+
+            </thead>
+
+            <tbody>
+
+              {!loading && pending.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="text-center py-10 text-slate-400">
+                    No pending deflashing jobs
+                  </td>
+                </tr>
+              )}
+
+              {pending.map(item => {
+
+                const remaining = item.qtyIn - item.processedQty
+
+                return (
+
+                  <tr
+                    key={item.id}
+                    className="border-b hover:bg-slate-50 text-center"
                   >
-                    Process
-                  </button>
-                </div>
 
-                <div className="mt-3 space-y-1 text-xs">
-                  <p>Total: {item.qtyIn}</p>
-                  <p className="text-blue-600">
-                    Processed: {item.processedQty}
-                  </p>
-                  <p className="text-orange-600 font-medium">
-                    Remaining: {remaining}
-                  </p>
-                </div>
+                    <td className="px-4 py-2 font-mono text-blue-600">
+                      {item.computerCode}
+                    </td>
 
-                <div className="w-full bg-slate-200 rounded h-2 mt-3">
-                  <div
-                    className="bg-blue-600 h-2 rounded"
-                    style={{ width: `${progress}%` }}
-                  />
-                </div>
-              </div>
-            )
-          })}
+                    <td className="px-4 py-2">
+                      {item.batchNo ?? '-'}
+                    </td>
+
+                    <td className="px-4 py-2">
+                      {item.qtyIn}
+                    </td>
+
+                    <td className="px-4 py-2 text-blue-600 font-semibold">
+                      {item.processedQty}
+                    </td>
+
+                    <td className="px-4 py-2 text-orange-600 font-bold">
+                      {remaining}
+                    </td>
+
+                    <td className="px-4 py-2">
+
+                      <Button
+                        size="sm"
+                        onClick={() => setSelected(item)}
+                      >
+                        Process
+                      </Button>
+
+                    </td>
+
+                  </tr>
+
+                )
+
+              })}
+
+            </tbody>
+
+          </table>
+
         </div>
+
       </Card>
 
       {/* PROCESS PANEL */}
+
       {selected && (
-        <Card className="p-6 border-l-4 border-blue-600 shadow-md">
+
+        <Card className="p-6 border-l-4 border-blue-600">
+
           <h2 className="text-lg font-semibold mb-4">
             ⚙️ Processing Panel
           </h2>
@@ -115,78 +159,85 @@ export default function DeflashingPage() {
               fetchData()
             }}
           />
+
         </Card>
+
       )}
 
-      {/* HISTORY WITH PARTIAL DETAIL */}
-      <Card className="p-6 shadow-sm">
-        <h2 className="font-semibold text-lg mb-5">
+      {/* HISTORY */}
+
+      <Card className="p-6 space-y-4 border">
+
+        <h2 className="text-lg font-bold">
           📦 Completed History
         </h2>
 
-        {done.length === 0 && (
-          <p className="text-sm text-slate-400">
-            No completed records
-          </p>
-        )}
+        <div className="overflow-x-auto border rounded-lg">
 
-        <div className="space-y-6">
-          {done.map(item => (
-            <div
-              key={item.id}
-              className="border rounded-lg p-5 bg-green-50"
-            >
-              <div className="flex justify-between items-center">
-                <div>
-                  <p className="font-semibold text-lg">
+          <table className="w-full text-sm">
+
+            <thead className="bg-slate-100">
+
+              <tr className="text-center">
+                <th className="py-3 px-4">CODE</th>
+                <th className="px-4">TOTAL</th>
+                <th className="px-4">PROCESSED</th>
+                <th className="px-4">STATUS</th>
+              </tr>
+
+            </thead>
+
+            <tbody>
+
+              {done.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="text-center py-10 text-slate-400">
+                    No completed records
+                  </td>
+                </tr>
+              )}
+
+              {done.map(item => (
+
+                <tr
+                  key={item.id}
+                  className="border-b hover:bg-slate-50 text-center"
+                >
+
+                  <td className="px-4 py-2 font-mono text-blue-600">
                     {item.computerCode}
-                  </p>
-                  <p className="text-xs text-slate-500">
-                    Total Incoming: {item.qtyIn}
-                  </p>
-                </div>
+                  </td>
 
-                <span className="text-xs bg-green-200 text-green-700 px-3 py-1 rounded">
-                  DONE
-                </span>
-              </div>
+                  <td className="px-4 py-2">
+                    {item.qtyIn}
+                  </td>
 
-              <div className="mt-4 space-y-2">
-                {item.logs?.map((log: any, index: number) => (
-                  <div
-                    key={log.id}
-                    className="flex justify-between items-center border-b pb-2 text-sm"
-                  >
-                    <div>
-                      <p className="font-medium">
-                        Step {index + 1}
-                      </p>
-                      <p className="text-xs text-slate-500">
-                        {new Date(log.processedAt).toLocaleDateString()}
-                      </p>
-                    </div>
+                  <td className="px-4 py-2 text-green-600 font-bold">
+                    {item.processedQty}
+                  </td>
 
-                    <div className="text-right">
-                      <p>
-                        Qty: {log.qtyOut + log.ngQty}
-                      </p>
-                      <p className="text-xs text-slate-500">
-                        By: {log.processedBy}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  <td className="px-4 py-2">
 
-              <div className="mt-3 text-sm font-medium text-green-700">
-                Total Processed: {item.processedQty}
-              </div>
+                    <span className="text-xs bg-green-200 text-green-700 px-3 py-1 rounded">
+                      DONE
+                    </span>
 
-            </div>
-          ))}
+                  </td>
+
+                </tr>
+
+              ))}
+
+            </tbody>
+
+          </table>
+
         </div>
+
       </Card>
 
     </div>
+
   )
+
 }

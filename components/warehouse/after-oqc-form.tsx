@@ -18,6 +18,7 @@ interface AfterOQCFormProps {
 }
 
 export function AfterOQCForm({ onSuccess, selectedQueue }: AfterOQCFormProps) {
+
   const { toast } = useToast()
 
   const [before, setBefore] = useState(0)
@@ -26,8 +27,6 @@ export function AfterOQCForm({ onSuccess, selectedQueue }: AfterOQCFormProps) {
   const [spare, setSpare] = useState(0)
   const [responsiblePerson, setResponsiblePerson] = useState('')
   const [loading, setLoading] = useState(false)
-
-  /* ================= LOAD FROM QC QUEUE ================= */
 
   useEffect(() => {
     if (selectedQueue) {
@@ -38,19 +37,30 @@ export function AfterOQCForm({ onSuccess, selectedQueue }: AfterOQCFormProps) {
     }
   }, [selectedQueue])
 
-  const stockTotal = ok + spare
+  /* ================= CALCULATION ================= */
 
-  // hanya cek responsible person
-  const isInvalid = !responsiblePerson
+  const processTotal = ok + ng
+  const finalStock = ok + spare
+
+  const progress =
+    before > 0 ? ((ok + ng) / before) * 100 : 0
+
+  const isInvalid =
+    !responsiblePerson ||
+    ok < 0 ||
+    ng < 0 ||
+    spare < 0
 
   /* ================= SUBMIT ================= */
 
   const handleSubmit = async () => {
+
     if (!selectedQueue) return
 
     setLoading(true)
 
     try {
+
       const res = await fetch('/api/transactions/after-oqc', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -59,6 +69,7 @@ export function AfterOQCForm({ onSuccess, selectedQueue }: AfterOQCFormProps) {
           afterQty: ok,
           ngQty: ng,
           spareQty: spare,
+          finalStock,
           responsiblePerson
         })
       })
@@ -72,62 +83,104 @@ export function AfterOQCForm({ onSuccess, selectedQueue }: AfterOQCFormProps) {
 
       onSuccess()
       setResponsiblePerson('')
+
     } catch {
+
       toast({
         variant: 'destructive',
         title: 'Failed',
         description: 'QC submit failed'
       })
+
     } finally {
+
       setLoading(false)
+
     }
   }
 
   if (!selectedQueue)
     return (
-      <Card className="p-6 text-sm text-slate-400 text-center">
+      <Card className="p-8 text-sm text-slate-400 text-center border">
         Select item from QC Queue
       </Card>
     )
 
   return (
+
     <Card className="p-6 space-y-6 border">
 
       {/* HEADER */}
+
       <div className="flex justify-between items-center">
-        <h2 className="text-xl font-bold">After OQC</h2>
+
+        <h2 className="text-xl font-bold">
+          🧪 After OQC
+        </h2>
+
         <span className="text-xs px-3 py-1 bg-orange-100 text-orange-700 rounded">
           QC PENDING
         </span>
+
       </div>
 
       {/* PRODUCT INFO */}
+
       <div className="grid grid-cols-3 gap-4 bg-slate-50 border rounded p-4">
+
         <div>
-          <p className="text-xs text-slate-500">Computer Code</p>
-          <p className="font-mono font-semibold">{selectedQueue.computerCode}</p>
+          <p className="text-xs text-slate-500">
+            Computer Code
+          </p>
+
+          <p className="font-mono font-semibold text-blue-600">
+            {selectedQueue.computerCode}
+          </p>
         </div>
 
         <div>
-          <p className="text-xs text-slate-500">Part No</p>
-          <p className="font-semibold">{selectedQueue.partNo}</p>
+          <p className="text-xs text-slate-500">
+            Part No
+          </p>
+
+          <p className="font-semibold">
+            {selectedQueue.partNo}
+          </p>
         </div>
 
         <div>
-          <p className="text-xs text-slate-500">Product</p>
-          <p className="font-semibold">{selectedQueue.productName}</p>
+          <p className="text-xs text-slate-500">
+            Product
+          </p>
+
+          <p className="font-semibold">
+            {selectedQueue.productName}
+          </p>
         </div>
+
       </div>
 
       {/* QC INPUT */}
+
       <div className="grid grid-cols-4 gap-4">
+
         <div>
-          <label className="text-xs">Before</label>
-          <Input value={before} readOnly className="font-bold" />
+          <label className="text-xs text-slate-500">
+            Before
+          </label>
+
+          <Input
+            value={before}
+            readOnly
+            className="font-bold text-center"
+          />
         </div>
 
         <div>
-          <label className="text-xs">OK</label>
+          <label className="text-xs text-slate-500">
+            OK
+          </label>
+
           <Input
             type="number"
             value={ok}
@@ -136,7 +189,10 @@ export function AfterOQCForm({ onSuccess, selectedQueue }: AfterOQCFormProps) {
         </div>
 
         <div>
-          <label className="text-xs">Spare</label>
+          <label className="text-xs text-slate-500">
+            Spare
+          </label>
+
           <Input
             type="number"
             value={spare}
@@ -145,46 +201,83 @@ export function AfterOQCForm({ onSuccess, selectedQueue }: AfterOQCFormProps) {
         </div>
 
         <div>
-          <label className="text-xs">NG</label>
+          <label className="text-xs text-slate-500">
+            NG
+          </label>
+
           <Input
             type="number"
             value={ng}
             onChange={e => setNg(Number(e.target.value))}
           />
         </div>
+
       </div>
 
-      {/* SUMMARY */}
-      <div className="flex justify-between items-center bg-slate-100 rounded px-4 py-2">
+      {/* PROGRESS */}
+
+      <div className="space-y-2">
+
+        <div className="flex justify-between text-xs text-slate-500">
+          <span>Process Check (OK + NG)</span>
+          <span>{processTotal} / {before}</span>
+        </div>
+
+        <div className="h-2 bg-slate-200 rounded">
+
+          <div
+            className="h-2 bg-green-500 rounded transition-all"
+            style={{ width: `${progress}%` }}
+          />
+
+        </div>
+
+      </div>
+
+      {/* FINAL STOCK */}
+
+      <div className="flex justify-between items-center bg-slate-100 rounded px-4 py-3">
+
         <span className="text-sm">
-          Stock Total (OK + Spare)
+          Final Stock (OK + Spare)
         </span>
 
-        <span
-          className={`font-bold ${
-            stockTotal <= before ? 'text-green-600' : 'text-yellow-600'
-          }`}
-        >
-          {stockTotal} / {before}
+        <span className="font-bold text-blue-600">
+          {finalStock}
         </span>
+
       </div>
 
       {/* OPERATOR */}
-      <Input
-        placeholder="Responsible Person"
-        value={responsiblePerson}
-        onChange={e => setResponsiblePerson(e.target.value)}
-      />
+
+      <div className="space-y-1">
+
+        <label className="text-xs text-slate-500">
+          Responsible Person
+        </label>
+
+        <Input
+          placeholder="Operator name"
+          value={responsiblePerson}
+          onChange={e => setResponsiblePerson(e.target.value)}
+        />
+
+      </div>
 
       {/* ACTION */}
+
       <Button
         disabled={isInvalid || loading}
         onClick={handleSubmit}
         className="w-full bg-green-600 text-white disabled:opacity-50"
       >
+
         {loading ? 'Processing...' : 'Submit QC'}
+
       </Button>
 
     </Card>
+
   )
+
 }
