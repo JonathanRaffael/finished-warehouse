@@ -19,10 +19,12 @@ interface QueueItem {
 
 export function QCQueueTable({
   queues,
-  onSelect
+  onSelect,
+  title
 }: {
   queues: QueueItem[]
   onSelect: (q: QueueItem) => void
+  title?: string
 }) {
 
   const [search, setSearch] = useState('')
@@ -30,11 +32,11 @@ export function QCQueueTable({
 
   const limit = 10
 
-  const filtered = queues.filter(q =>
-    `${q.computerCode}${q.partNo}${q.productName}${q.batch}`
-      .toLowerCase()
-      .includes(search.toLowerCase())
-  )
+  const filtered = (queues || []).filter(q =>
+  `${q.computerCode}${q.partNo}${q.productName}${q.batch}`
+    .toLowerCase()
+    .includes(search.toLowerCase())
+)
 
   const totalPages = Math.ceil(filtered.length / limit)
 
@@ -52,7 +54,7 @@ export function QCQueueTable({
       <div className="flex items-center justify-between">
 
         <h2 className="text-lg font-bold">
-          🧪 QC Queue
+          {title || '🧪 QC Queue'}
         </h2>
 
         <Input

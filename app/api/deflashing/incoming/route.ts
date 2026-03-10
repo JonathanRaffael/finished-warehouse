@@ -22,16 +22,29 @@ export async function POST(req: Request) {
       )
     }
 
+    // ambil incoming terbaru
+    const incoming = await prisma.incomingTransaction.findFirst({
+      orderBy: { createdAt: 'desc' }
+    })
+
+    if (!incoming) {
+      return NextResponse.json(
+        { message: 'No IncomingTransaction found' },
+        { status: 400 }
+      )
+    }
+
     const data = await prisma.deflashing.create({
       data: {
+        incomingId: incoming.id,
         computerCode,
         partNo,
         productName,
         productionType,
         qtyIn: Number(qtyIn),
         incomingBy,
-        batchNo: batchNo ? Number(batchNo) : null, // 🔥 SIMPAN BATCH
-        status: 'PENDING'
+        batchNo: batchNo ? Number(batchNo) : null,
+        status: "PENDING"
       }
     })
 
@@ -39,6 +52,7 @@ export async function POST(req: Request) {
 
   } catch (error) {
     console.error('[DEFLASHING CREATE ERROR]', error)
+
     return NextResponse.json(
       { message: 'Internal Server Error' },
       { status: 500 }

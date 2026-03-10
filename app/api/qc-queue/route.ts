@@ -5,6 +5,8 @@ export async function GET() {
 
   try {
 
+    /* ================= QC FROM INCOMING ================= */
+
     const incoming = await prisma.incomingTransaction.findMany({
 
       where: {
@@ -22,35 +24,63 @@ export async function GET() {
         computerCode: true,
         partNo: true,
         productName: true,
-        batch: true,        // 🔥 WAJIB ADA
+        batch: true,
         remainingQty: true
       }
 
     })
 
-    const queue = incoming.map(i => ({
-
+    const incomingQueue = incoming.map(i => ({
       id: i.id,
       computerCode: i.computerCode,
       partNo: i.partNo,
       productName: i.productName,
-
-      batch: i.batch ?? 0, // 🔥 ini yang akan tampil di tabel
-
+      batch: i.batch ?? 0,
       beforeQty: i.remainingQty,
       afterQty: 0,
       ngQty: 0,
       spareQty: 0
-
     }))
 
-    return NextResponse.json(queue)
+
+    /* ================= QC FROM DEFLASHING ================= */
+
+    const deflashingQueue = await prisma.afterOQCTransaction.findMany({
+
+      where: {
+        status: 'PENDING'
+      },
+
+      orderBy: {
+        createdAt: 'asc'
+      },
+
+      select: {
+        id: true,
+        computerCode: true,
+        partNo: true,
+        productName: true,
+        beforeQty: true,
+        afterQty: true,
+        ngQty: true,
+        spareQty: true
+      }
+
+    })
+
+    return NextResponse.json({
+      incomingQueue,
+      deflashingQueue
+    })
 
   } catch (e) {
 
     console.error('[QC_QUEUE]', e)
 
-    return NextResponse.json([], { status: 500 })
+    return NextResponse.json({
+      incomingQueue: [],
+      deflashingQueue: []
+    }, { status: 500 })
 
   }
 

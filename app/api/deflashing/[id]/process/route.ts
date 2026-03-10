@@ -6,19 +6,19 @@ export async function PATCH(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
+
     const { id } = await context.params
     const body = await req.json()
 
-    const { qtyOut, ngQty, spareQty, processedBy } = body
+    const qtyOut = Number(body.qtyOut)
+    const ngQty = Number(body.ngQty)
+    const processedBy = body.processedBy
 
-    if (
-      qtyOut == null ||
-      ngQty == null ||
-      spareQty == null ||
-      !processedBy
-    ) {
+    /* ================= VALIDATION ================= */
+
+    if (isNaN(qtyOut) || isNaN(ngQty) || !processedBy) {
       return NextResponse.json(
-        { message: 'Missing required fields' },
+        { message: 'Invalid or missing fields' },
         { status: 400 }
       )
     }
@@ -53,7 +53,7 @@ export async function PATCH(
 
     if (processNow > remaining) {
       return NextResponse.json(
-        { message: 'Processing exceeds remaining quantity' },
+        { message: `Processing exceeds remaining (${remaining})` },
         { status: 400 }
       )
     }
@@ -61,18 +61,20 @@ export async function PATCH(
     const newProcessedQty = record.processedQty + processNow
     const isFinished = newProcessedQty === record.qtyIn
 
-    // 🔥 Simpan log parsial
+    /* ================= SAVE PROCESS LOG ================= */
+
     await prisma.deflashingProcessLog.create({
       data: {
         deflashingId: id,
         qtyOut,
         ngQty,
-        spareQty,
+        spareQty: 0,
         processedBy
       }
     })
 
-    // 🔥 Update master
+    /* ================= UPDATE DEFLASHING ================= */
+
     const updated = await prisma.deflashing.update({
       where: { id },
       data: {
@@ -83,23 +85,63 @@ export async function PATCH(
       }
     })
 
-    // 🔥 Update stock (OK + Spare masuk stock)
+    /* ================= UPDATE STOCK ================= */
+
     await prisma.product.update({
       where: { computerCode: record.computerCode },
       data: {
         initialStock: {
-          increment: qtyOut + spareQty
+          increment: qtyOut
         }
       }
     })
 
+    /* ================= CREATE QC QUEUE ================= */
+
+    if (qtyOut > 0) {
+
+      if (!record.incomingId) {
+
+        console.error('❌ Deflashing missing incomingId:', record.id)
+
+      } else {
+
+        await prisma.afterOQCTransaction.create({
+          data: {
+            computerCode: record.computerCode,
+            partNo: record.partNo,
+            productName: record.productName,
+
+            beforeQty: qtyOut,
+
+            afterQty: 0,
+            ngQty: 0,
+            spareQty: 0,
+
+            status: 'PENDING',
+
+            responsiblePerson: processedBy,
+
+            incomingId: record.incomingId
+          }
+        })
+
+        console.log('✅ QC Queue created from Deflashing:', record.computerCode)
+
+      }
+
+    }
+
     return NextResponse.json(updated)
 
   } catch (error) {
+
     console.error('[PROCESS DEFLASHING ERROR]', error)
+
     return NextResponse.json(
       { message: 'Internal Server Error' },
       { status: 500 }
     )
+
   }
 }

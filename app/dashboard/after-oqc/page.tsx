@@ -8,7 +8,8 @@ import { Card } from '@/components/ui/card'
 
 export default function AfterOQCPage() {
 
-  const [qcQueue, setQcQueue] = useState<any[]>([])
+  const [incomingQueue, setIncomingQueue] = useState<any[]>([])
+  const [deflashingQueue, setDeflashingQueue] = useState<any[]>([])
   const [history, setHistory] = useState<any[]>([])
   const [selectedQueue, setSelectedQueue] = useState<any>(null)
 
@@ -30,12 +31,16 @@ export default function AfterOQCPage() {
       if (!res.ok) throw new Error()
 
       const data = await res.json()
-      setQcQueue(data)
+
+      setIncomingQueue(data.incomingQueue || [])
+      setDeflashingQueue(data.deflashingQueue || [])
 
     } catch (e) {
 
       console.error('[QC QUEUE ERROR]', e)
-      setQcQueue([])
+
+      setIncomingQueue([])
+      setDeflashingQueue([])
 
     } finally {
 
@@ -99,19 +104,19 @@ export default function AfterOQCPage() {
 
     <div className="space-y-8">
 
-      {/* ================= QC QUEUE ================= */}
+      {/* ================= QC QUEUE FROM INCOMING ================= */}
 
       <Card className="p-6 space-y-4">
 
         <div className="flex justify-between items-center">
 
           <h2 className="text-lg font-bold">
-            🧪 QC Queue
+            📦 QC Queue (Incoming)
           </h2>
 
-          {!loadingQueue && qcQueue.length === 0 && (
+          {!loadingQueue && incomingQueue.length === 0 && (
             <span className="text-xs text-slate-400">
-              No pending QC
+              No incoming QC
             </span>
           )}
 
@@ -126,7 +131,8 @@ export default function AfterOQCPage() {
         ) : (
 
           <QCQueueTable
-            queues={qcQueue}
+            title="📦 QC Queue (Incoming)"
+            queues={incomingQueue}
             onSelect={setSelectedQueue}
           />
 
@@ -134,12 +140,51 @@ export default function AfterOQCPage() {
 
       </Card>
 
+
+      {/* ================= QC QUEUE FROM DEFLASHING ================= */}
+
+      <Card className="p-6 space-y-4">
+
+        <div className="flex justify-between items-center">
+
+          <h2 className="text-lg font-bold">
+            🔧 QC Queue (From Deflashing)
+          </h2>
+
+          {!loadingQueue && deflashingQueue.length === 0 && (
+            <span className="text-xs text-slate-400">
+              No deflashing QC
+            </span>
+          )}
+
+        </div>
+
+        {loadingQueue ? (
+
+          <div className="text-xs text-slate-400">
+            Loading QC Queue...
+          </div>
+
+        ) : (
+
+          <QCQueueTable
+            title="🔧 QC Queue (From Deflashing)"
+            queues={deflashingQueue}
+            onSelect={setSelectedQueue}
+          />
+
+        )}
+
+      </Card>
+
+
       {/* ================= QC FORM ================= */}
 
       <AfterOQCForm
         selectedQueue={selectedQueue}
         onSuccess={handleSuccess}
       />
+
 
       {/* ================= QC HISTORY ================= */}
 

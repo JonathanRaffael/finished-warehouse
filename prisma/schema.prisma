@@ -182,8 +182,8 @@ model OutgoingTransaction {
 model Deflashing {
   id String @id @default(cuid())
 
-  incomingId String?
-  incoming IncomingTransaction? @relation(fields: [incomingId], references: [id], onDelete: Cascade)
+  incomingId String
+  incoming IncomingTransaction @relation(fields: [incomingId], references: [id], onDelete: Cascade)
 
   incomingDate DateTime @default(now())
 

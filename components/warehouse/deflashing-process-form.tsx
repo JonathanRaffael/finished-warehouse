@@ -17,7 +17,6 @@ export function DeflashingProcessForm({ data, onSuccess }: Props) {
 
   const [qtyOut, setQtyOut] = useState(0)
   const [ngQty, setNgQty] = useState(0)
-  const [spareQty, setSpareQty] = useState(0)
   const [processedBy, setProcessedBy] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -30,22 +29,21 @@ export function DeflashingProcessForm({ data, onSuccess }: Props) {
 
   /* ================= CALCULATION ================= */
 
-  // Queue hanya berkurang dari OK
-  const processNow = qtyOut
+  const totalProcess = qtyOut + ngQty
 
-  // Remaining setelah proses ini
-  const afterThis = remaining - qtyOut
+  const afterThis = remaining - totalProcess
 
-  // Final stock (NG tidak dihitung)
-  const finalStock = qtyOut + spareQty
+  const finalStock = qtyOut
 
   const isValid =
-    qtyOut > 0 &&
-    qtyOut <= remaining &&
+    qtyOut >= 0 &&
+    ngQty >= 0 &&
+    totalProcess > 0 &&
+    totalProcess <= remaining &&
     processedBy.trim() !== ''
 
   const progressPercent =
-    ((data.processedQty + qtyOut) / data.qtyIn) * 100
+    ((data.processedQty + totalProcess) / data.qtyIn) * 100
 
   /* ================= SUBMIT ================= */
 
@@ -55,7 +53,7 @@ export function DeflashingProcessForm({ data, onSuccess }: Props) {
       toast({
         variant: 'destructive',
         title: 'Invalid Quantity',
-        description: 'OK quantity exceeds remaining quantity'
+        description: 'OK + NG cannot exceed remaining quantity'
       })
       return
     }
@@ -70,7 +68,6 @@ export function DeflashingProcessForm({ data, onSuccess }: Props) {
         body: JSON.stringify({
           qtyOut,
           ngQty,
-          spareQty,
           finalStock,
           processedBy
         })
@@ -163,7 +160,7 @@ export function DeflashingProcessForm({ data, onSuccess }: Props) {
 
       {/* INPUT QTY */}
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 gap-4">
 
         <div>
           <label className="text-xs text-slate-500">
@@ -193,20 +190,6 @@ export function DeflashingProcessForm({ data, onSuccess }: Props) {
 
         </div>
 
-        <div>
-          <label className="text-xs text-slate-500">
-            Spare
-          </label>
-
-          <Input
-            type="number"
-            min={0}
-            value={spareQty}
-            onChange={e => setSpareQty(Number(e.target.value))}
-          />
-
-        </div>
-
       </div>
 
       {/* SUMMARY */}
@@ -214,9 +197,9 @@ export function DeflashingProcessForm({ data, onSuccess }: Props) {
       <div className="bg-slate-100 rounded px-4 py-3 space-y-2">
 
         <div className="flex justify-between text-sm">
-          <span>Processing Now (OK)</span>
+          <span>Total Processing</span>
           <span className="font-bold">
-            {processNow}
+            {totalProcess}
           </span>
         </div>
 
@@ -236,7 +219,7 @@ export function DeflashingProcessForm({ data, onSuccess }: Props) {
         </div>
 
         <div className="flex justify-between text-sm">
-          <span>Final Stock (OK + Spare)</span>
+          <span>Final Stock (OK)</span>
           <span className="font-bold text-blue-600">
             {finalStock}
           </span>

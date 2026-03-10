@@ -166,75 +166,124 @@ export default function DeflashingPage() {
 
       {/* HISTORY */}
 
-      <Card className="p-6 space-y-4 border">
+<Card className="p-6 space-y-4 border">
 
-        <h2 className="text-lg font-bold">
-          📦 Completed History
-        </h2>
+  <h2 className="text-lg font-bold">
+    📦 Deflashing History
+  </h2>
 
-        <div className="overflow-x-auto border rounded-lg">
+  <div className="overflow-x-auto border rounded-lg">
 
-          <table className="w-full text-sm">
+    <table className="w-full text-sm">
 
-            <thead className="bg-slate-100">
+      <thead className="bg-slate-100">
 
-              <tr className="text-center">
-                <th className="py-3 px-4">CODE</th>
-                <th className="px-4">TOTAL</th>
-                <th className="px-4">PROCESSED</th>
-                <th className="px-4">STATUS</th>
+        <tr className="text-center">
+          <th className="py-3 px-4">DATE</th>
+          <th className="px-4">TIME</th>
+          <th className="px-4">CODE</th>
+          <th className="px-4">BATCH</th>
+          <th className="px-4 text-green-600">OK</th>
+          <th className="px-4 text-red-600">NG</th>
+          <th className="px-4">TOTAL</th>
+          <th className="px-4">NG %</th>
+          <th className="px-4">OPERATOR</th>
+        </tr>
+
+      </thead>
+
+      <tbody>
+
+        {done.length === 0 && (
+          <tr>
+            <td colSpan={9} className="text-center py-10 text-slate-400">
+              No history
+            </td>
+          </tr>
+        )}
+
+        {done.flatMap(item =>
+          item.logs.map((log: any) => {
+
+            const ok = log.qtyOut
+            const ng = log.ngQty
+            const total = ok + ng
+
+            const ngRate =
+              total > 0 ? ((ng / total) * 100).toFixed(1) : "0"
+
+            const date = new Date(log.processedAt)
+
+            return (
+
+              <tr
+                key={log.id}
+                className="border-b hover:bg-slate-50 text-center"
+              >
+
+                <td className="px-4 py-2">
+                  {date.toLocaleDateString()}
+                </td>
+
+                <td className="px-4 py-2 text-xs text-slate-500">
+                  {date.toLocaleTimeString()}
+                </td>
+
+                <td className="px-4 py-2 font-mono text-blue-600">
+                  {item.computerCode}
+                </td>
+
+                <td className="px-4 py-2">
+                  {item.batchNo ?? '-'}
+                </td>
+
+                <td className="px-4 py-2 text-green-600 font-bold">
+                  {ok}
+                </td>
+
+                <td className="px-4 py-2 text-red-600 font-bold">
+                  {ng}
+                </td>
+
+                <td className="px-4 py-2 font-semibold">
+                  {total}
+                </td>
+
+                <td className="px-4 py-2">
+
+                  <span
+                    className={`px-2 py-1 rounded text-xs font-semibold
+                    ${
+                      Number(ngRate) > 5
+                        ? "bg-red-200 text-red-700"
+                        : Number(ngRate) > 2
+                        ? "bg-yellow-200 text-yellow-700"
+                        : "bg-green-200 text-green-700"
+                    }`}
+                  >
+                    {ngRate} %
+                  </span>
+
+                </td>
+
+                <td className="px-4 py-2 text-xs text-slate-600">
+                  {log.processedBy}
+                </td>
+
               </tr>
 
-            </thead>
+            )
 
-            <tbody>
+          })
+        )}
 
-              {done.length === 0 && (
-                <tr>
-                  <td colSpan={4} className="text-center py-10 text-slate-400">
-                    No completed records
-                  </td>
-                </tr>
-              )}
+      </tbody>
 
-              {done.map(item => (
+    </table>
 
-                <tr
-                  key={item.id}
-                  className="border-b hover:bg-slate-50 text-center"
-                >
+  </div>
 
-                  <td className="px-4 py-2 font-mono text-blue-600">
-                    {item.computerCode}
-                  </td>
-
-                  <td className="px-4 py-2">
-                    {item.qtyIn}
-                  </td>
-
-                  <td className="px-4 py-2 text-green-600 font-bold">
-                    {item.processedQty}
-                  </td>
-
-                  <td className="px-4 py-2">
-
-                    <span className="text-xs bg-green-200 text-green-700 px-3 py-1 rounded">
-                      DONE
-                    </span>
-
-                  </td>
-
-                </tr>
-
-              ))}
-
-            </tbody>
-
-          </table>
-
-        </div>
-
-      </Card>
+</Card>
 
     </div>
 
