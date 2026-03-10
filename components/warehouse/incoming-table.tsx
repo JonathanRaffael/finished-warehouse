@@ -43,6 +43,7 @@ export function IncomingTable({
 
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editQty, setEditQty] = useState<number>(0)
+  const [editBatch, setEditBatch] = useState<number>(0)
 
   const [page, setPage] = useState(1)
   const limit = 10
@@ -50,6 +51,7 @@ export function IncomingTable({
   const startEdit = (tx: Transaction) => {
     setEditingId(tx.id)
     setEditQty(tx.incomingQty)
+    setEditBatch(tx.batch)
   }
 
   const cancelEdit = () => {
@@ -57,10 +59,14 @@ export function IncomingTable({
   }
 
   const saveEdit = (tx: Transaction) => {
-    console.log('Update Incoming Qty', {
+
+    console.log('Update Incoming', {
       id: tx.id,
-      newQty: editQty
+      newQty: editQty,
+      newBatch: editBatch
     })
+
+    // nanti disini bisa fetch API update
 
     setEditingId(null)
   }
@@ -83,8 +89,6 @@ export function IncomingTable({
   return (
 
     <Card className="border p-6 space-y-4">
-
-      {/* HEADER */}
 
       <div className="flex items-center justify-between">
 
@@ -111,8 +115,6 @@ export function IncomingTable({
         />
 
       </div>
-
-      {/* TABLE */}
 
       <div className="overflow-x-auto border rounded-lg">
 
@@ -179,10 +181,25 @@ export function IncomingTable({
                         {tx.productName}
                       </td>
 
+                      {/* BATCH EDIT */}
                       <td className="font-semibold text-purple-600">
-                        {tx.batch || '-'}
+
+                        {editingId === tx.id ? (
+
+                          <Input
+                            type="number"
+                            value={editBatch}
+                            onChange={e => setEditBatch(Number(e.target.value))}
+                            className="w-20 mx-auto text-center"
+                          />
+
+                        ) : (
+                          tx.batch || '-'
+                        )}
+
                       </td>
 
+                      {/* INCOMING EDIT */}
                       <td className="font-bold text-green-600">
 
                         {editingId === tx.id ? (
@@ -291,8 +308,6 @@ export function IncomingTable({
 
                     </tr>
 
-                    {/* OUTGOING HISTORY */}
-
                     {expandedId === tx.id && (
 
                       <tr>
@@ -382,8 +397,6 @@ export function IncomingTable({
         </table>
 
       </div>
-
-      {/* PAGINATION */}
 
       <div className="flex items-center justify-between pt-2">
 
