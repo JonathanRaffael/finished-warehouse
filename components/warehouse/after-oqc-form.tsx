@@ -14,6 +14,7 @@ interface AfterOQCFormProps {
     partNo: string
     productName: string
     beforeQty: number
+    batch?: number
   } | null
 }
 
@@ -26,6 +27,10 @@ export function AfterOQCForm({ onSuccess, selectedQueue }: AfterOQCFormProps) {
   const [computerCode, setComputerCode] = useState('')
   const [partNo, setPartNo] = useState('')
   const [productName, setProductName] = useState('')
+
+  /* ================= BATCH ================= */
+
+  const [batch, setBatch] = useState<string>('')
 
   /* ================= QTY ================= */
 
@@ -55,10 +60,8 @@ export function AfterOQCForm({ onSuccess, selectedQueue }: AfterOQCFormProps) {
 
       const data = await res.json()
 
-      if (data) {
-        setPartNo(data.partNo || '')
-        setProductName(data.productName || '')
-      }
+      setPartNo(data.partNo || '')
+      setProductName(data.productName || '')
 
     } catch (err) {
       console.error('Lookup failed', err)
@@ -92,6 +95,12 @@ export function AfterOQCForm({ onSuccess, selectedQueue }: AfterOQCFormProps) {
       setProductName(selectedQueue.productName)
 
       setBefore(selectedQueue.beforeQty)
+
+      /* 🔥 AUTO BATCH FROM INCOMING */
+
+      if (selectedQueue.batch !== undefined) {
+        setBatch(String(selectedQueue.batch))
+      }
 
       setOk(0)
       setNg(0)
@@ -134,6 +143,7 @@ export function AfterOQCForm({ onSuccess, selectedQueue }: AfterOQCFormProps) {
           computerCode,
           partNo,
           productName,
+          batch, // 🔥 kirim batch juga
           beforeQty: before,
           afterQty: ok,
           ngQty: ng,
@@ -153,6 +163,7 @@ export function AfterOQCForm({ onSuccess, selectedQueue }: AfterOQCFormProps) {
       setComputerCode('')
       setPartNo('')
       setProductName('')
+      setBatch('')
       setBefore(0)
       setOk(0)
       setNg(0)
@@ -197,48 +208,38 @@ export function AfterOQCForm({ onSuccess, selectedQueue }: AfterOQCFormProps) {
 
       {/* PRODUCT INFO */}
 
-      <div className="grid grid-cols-3 gap-4 bg-slate-50 border rounded p-4">
+      <div className="grid grid-cols-4 gap-4 bg-slate-50 border rounded p-4">
 
         <div>
-
-          <p className="text-xs text-slate-500">
-            Computer Code
-          </p>
-
+          <p className="text-xs text-slate-500">Computer Code</p>
           <Input
             value={computerCode}
             disabled={!!selectedQueue}
-            onChange={(e) => {
-              setComputerCode(e.target.value.toUpperCase())
-            }}
+            onChange={(e) => setComputerCode(e.target.value.toUpperCase())}
           />
-
         </div>
 
         <div>
-
-          <p className="text-xs text-slate-500">
-            Part No
-          </p>
-
-          <Input
-            value={partNo}
-            readOnly
-          />
-
+          <p className="text-xs text-slate-500">Part No</p>
+          <Input value={partNo} readOnly />
         </div>
 
         <div>
+          <p className="text-xs text-slate-500">Product</p>
+          <Input value={productName} readOnly />
+        </div>
 
-          <p className="text-xs text-slate-500">
-            Product
-          </p>
+        {/* 🔥 BATCH FIELD */}
+
+        <div>
+          <p className="text-xs text-slate-500">Batch / Note</p>
 
           <Input
-            value={productName}
-            readOnly
+            value={batch}
+            readOnly={!!selectedQueue}
+            placeholder="Enter batch or note"
+            onChange={(e) => setBatch(e.target.value)}
           />
-
         </div>
 
       </div>
@@ -248,10 +249,7 @@ export function AfterOQCForm({ onSuccess, selectedQueue }: AfterOQCFormProps) {
       <div className="grid grid-cols-4 gap-4">
 
         <div>
-
-          <label className="text-xs text-slate-500">
-            Before
-          </label>
+          <label className="text-xs text-slate-500">Before</label>
 
           <Input
             type="number"
@@ -260,49 +258,36 @@ export function AfterOQCForm({ onSuccess, selectedQueue }: AfterOQCFormProps) {
             readOnly={!!selectedQueue}
             className="font-bold text-center"
           />
-
         </div>
 
         <div>
-
-          <label className="text-xs text-slate-500">
-            OK
-          </label>
+          <label className="text-xs text-slate-500">OK</label>
 
           <Input
             type="number"
             value={ok}
             onChange={e => setOk(Number(e.target.value))}
           />
-
         </div>
 
         <div>
-
-          <label className="text-xs text-slate-500">
-            Spare
-          </label>
+          <label className="text-xs text-slate-500">Spare</label>
 
           <Input
             type="number"
             value={spare}
             onChange={e => setSpare(Number(e.target.value))}
           />
-
         </div>
 
         <div>
-
-          <label className="text-xs text-slate-500">
-            NG
-          </label>
+          <label className="text-xs text-slate-500">NG</label>
 
           <Input
             type="number"
             value={ng}
             onChange={e => setNg(Number(e.target.value))}
           />
-
         </div>
 
       </div>
@@ -312,22 +297,15 @@ export function AfterOQCForm({ onSuccess, selectedQueue }: AfterOQCFormProps) {
       <div className="space-y-2">
 
         <div className="flex justify-between text-xs text-slate-500">
-
           <span>Process Check (OK + NG)</span>
-
-          <span>
-            {processTotal} / {before}
-          </span>
-
+          <span>{processTotal} / {before}</span>
         </div>
 
         <div className="h-2 bg-slate-200 rounded">
-
           <div
             className="h-2 bg-green-500 rounded transition-all"
             style={{ width: `${progress}%` }}
           />
-
         </div>
 
       </div>
@@ -336,9 +314,7 @@ export function AfterOQCForm({ onSuccess, selectedQueue }: AfterOQCFormProps) {
 
       <div className="flex justify-between items-center bg-slate-100 rounded px-4 py-3">
 
-        <span className="text-sm">
-          Final Stock (OK + Spare)
-        </span>
+        <span className="text-sm">Final Stock (OK + Spare)</span>
 
         <span className="font-bold text-blue-600">
           {finalStock}

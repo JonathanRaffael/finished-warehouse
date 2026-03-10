@@ -10,6 +10,7 @@ interface QueueItem {
   computerCode: string
   partNo: string
   productName: string
+  batch: number
   beforeQty: number
   afterQty: number
   ngQty: number
@@ -30,7 +31,7 @@ export function QCQueueTable({
   const limit = 10
 
   const filtered = queues.filter(q =>
-    `${q.computerCode}${q.partNo}${q.productName}`
+    `${q.computerCode}${q.partNo}${q.productName}${q.batch}`
       .toLowerCase()
       .includes(search.toLowerCase())
   )
@@ -43,7 +44,10 @@ export function QCQueueTable({
   )
 
   return (
+
     <Card className="border p-6 space-y-4">
+
+      {/* HEADER */}
 
       <div className="flex items-center justify-between">
 
@@ -53,7 +57,7 @@ export function QCQueueTable({
 
         <Input
           className="max-w-sm"
-          placeholder="Search code / part / product"
+          placeholder="Search code / part / product / batch"
           value={search}
           onChange={e => {
             setSearch(e.target.value)
@@ -63,18 +67,25 @@ export function QCQueueTable({
 
       </div>
 
+      {/* TABLE */}
+
       <div className="overflow-x-auto border rounded-lg">
 
         <table className="w-full text-xs">
 
           <thead className="bg-slate-100">
+
             <tr className="text-center">
+
               <th className="py-3">CODE</th>
               <th>PART</th>
               <th>PRODUCT</th>
+              <th>BATCH</th>
               <th>REMAINING</th>
               <th>ACTION</th>
+
             </tr>
+
           </thead>
 
           <tbody>
@@ -82,7 +93,7 @@ export function QCQueueTable({
             {paginated.length === 0 ? (
 
               <tr>
-                <td colSpan={5} className="text-center py-10 text-slate-400">
+                <td colSpan={6} className="text-center py-10 text-slate-400">
                   No QC Queue
                 </td>
               </tr>
@@ -94,6 +105,11 @@ export function QCQueueTable({
                 const remaining =
                   q.beforeQty -
                   (q.afterQty + q.ngQty)
+
+                const percent =
+                  q.beforeQty > 0
+                    ? (remaining / q.beforeQty) * 100
+                    : 0
 
                 return (
 
@@ -114,6 +130,10 @@ export function QCQueueTable({
                       {q.productName}
                     </td>
 
+                    <td className="font-semibold text-purple-600">
+                      {q.batch || '-'}
+                    </td>
+
                     <td className="font-bold text-orange-600">
 
                       {remaining}
@@ -123,11 +143,7 @@ export function QCQueueTable({
                         <div
                           className="h-1 bg-orange-500 rounded transition-all"
                           style={{
-                            width: `${
-                              q.beforeQty > 0
-                                ? (remaining / q.beforeQty) * 100
-                                : 0
-                            }%`
+                            width: `${percent}%`
                           }}
                         />
 
@@ -155,6 +171,7 @@ export function QCQueueTable({
                   </tr>
 
                 )
+
               })
 
             )}
@@ -165,7 +182,7 @@ export function QCQueueTable({
 
       </div>
 
-      {/* Pagination */}
+      {/* PAGINATION */}
 
       <div className="flex items-center justify-between pt-2">
 
@@ -198,5 +215,7 @@ export function QCQueueTable({
       </div>
 
     </Card>
+
   )
+
 }

@@ -68,7 +68,7 @@ export function IncomingTable({
   const filtered = [...transactions]
     .sort((a, b) => a.id.localeCompare(b.id))
     .filter(tx =>
-      `${tx.computerCode || ''}${tx.partNo || ''}${tx.productName || ''}`
+      `${tx.computerCode}${tx.partNo}${tx.productName}`
         .toLowerCase()
         .includes(search.toLowerCase())
     )
@@ -81,7 +81,10 @@ export function IncomingTable({
   )
 
   return (
+
     <Card className="border p-6 space-y-4">
+
+      {/* HEADER */}
 
       <div className="flex items-center justify-between">
 
@@ -109,32 +112,46 @@ export function IncomingTable({
 
       </div>
 
+      {/* TABLE */}
+
       <div className="overflow-x-auto border rounded-lg">
 
         <table className="w-full text-xs">
 
           <thead className="bg-slate-100">
+
             <tr className="text-center">
+
               <th className="py-3">DATE</th>
               <th>CODE</th>
               <th>PART</th>
               <th>PRODUCT</th>
+              <th>BATCH</th>
               <th>IN</th>
               <th>REM</th>
               <th>STATUS</th>
+
               {!hideAction && <th>ACTION</th>}
+
             </tr>
+
           </thead>
 
           <tbody>
 
             {paginated.length === 0 ? (
+
               <tr>
-                <td colSpan={hideAction ? 7 : 8} className="py-10 text-center text-slate-400">
+                <td
+                  colSpan={hideAction ? 8 : 9}
+                  className="py-10 text-center text-slate-400"
+                >
                   No incoming data
                 </td>
               </tr>
+
             ) : (
+
               paginated.map(tx => {
 
                 const percent =
@@ -143,6 +160,7 @@ export function IncomingTable({
                     : 0
 
                 return (
+
                   <Fragment key={tx.id}>
 
                     <tr className="border-b hover:bg-slate-50 text-center">
@@ -161,15 +179,21 @@ export function IncomingTable({
                         {tx.productName}
                       </td>
 
+                      <td className="font-semibold text-purple-600">
+                        {tx.batch || '-'}
+                      </td>
+
                       <td className="font-bold text-green-600">
 
                         {editingId === tx.id ? (
+
                           <Input
                             type="number"
                             value={editQty}
                             onChange={e => setEditQty(Number(e.target.value))}
                             className="w-20 mx-auto text-center"
                           />
+
                         ) : (
                           tx.incomingQty
                         )}
@@ -190,6 +214,7 @@ export function IncomingTable({
                       </td>
 
                       <td>
+
                         <span
                           className={`px-2 py-1 text-[10px] rounded ${
                             tx.status === 'OPEN'
@@ -199,9 +224,11 @@ export function IncomingTable({
                         >
                           {tx.status}
                         </span>
+
                       </td>
 
                       {!hideAction && (
+
                         <td>
 
                           <div className="flex justify-center gap-2">
@@ -209,10 +236,7 @@ export function IncomingTable({
                             {editingId === tx.id ? (
 
                               <>
-                                <Button
-                                  size="sm"
-                                  onClick={() => saveEdit(tx)}
-                                >
+                                <Button size="sm" onClick={() => saveEdit(tx)}>
                                   Save
                                 </Button>
 
@@ -262,14 +286,21 @@ export function IncomingTable({
                           </div>
 
                         </td>
+
                       )}
 
                     </tr>
 
+                    {/* OUTGOING HISTORY */}
+
                     {expandedId === tx.id && (
 
                       <tr>
-                        <td colSpan={hideAction ? 7 : 8} className="bg-slate-50 px-12 py-4">
+
+                        <td
+                          colSpan={hideAction ? 8 : 9}
+                          className="bg-slate-50 px-12 py-4"
+                        >
 
                           <div className="space-y-3">
 
@@ -333,13 +364,17 @@ export function IncomingTable({
                           </div>
 
                         </td>
+
                       </tr>
 
                     )}
 
                   </Fragment>
+
                 )
+
               })
+
             )}
 
           </tbody>
@@ -348,7 +383,7 @@ export function IncomingTable({
 
       </div>
 
-      {/* Pagination */}
+      {/* PAGINATION */}
 
       <div className="flex items-center justify-between pt-2">
 
@@ -381,5 +416,7 @@ export function IncomingTable({
       </div>
 
     </Card>
+
   )
+
 }

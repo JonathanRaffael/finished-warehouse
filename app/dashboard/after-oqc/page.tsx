@@ -23,7 +23,7 @@ export default function AfterOQCPage() {
 
     try {
 
-      const res = await fetch('/api/transactions/after-oqc', {
+      const res = await fetch('/api/qc-queue', {
         cache: 'no-store'
       })
 

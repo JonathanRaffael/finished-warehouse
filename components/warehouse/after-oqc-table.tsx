@@ -17,6 +17,10 @@ interface Transaction {
     computerCode: string
     partNo: string
     productName: string
+    batch?: number | string
+    incoming?: {
+      batch?: number
+    }
   }
 }
 
@@ -47,20 +51,29 @@ export function AfterOQCTable({ transactions }: Props) {
 
       const queueId = row.afterOQC.id
 
+      const batchValue =
+        row.afterOQC.batch ??
+        row.afterOQC.incoming?.batch ??
+        '-'
+
       if (!acc[queueId]) {
+
         acc[queueId] = {
           id: queueId,
           computerCode: row.afterOQC.computerCode,
           partNo: row.afterOQC.partNo,
           productName: row.afterOQC.productName,
+          batch: batchValue,
           history: [],
           after: 0,
           ng: 0,
           spare: 0
         }
+
       }
 
       acc[queueId].history.push(row)
+
       acc[queueId].after += row.okQty || 0
       acc[queueId].ng += row.ngQty || 0
       acc[queueId].spare += row.spareQty || 0
@@ -133,6 +146,7 @@ export function AfterOQCTable({ transactions }: Props) {
               <th className="py-3 px-4">CODE</th>
               <th className="px-4">PART</th>
               <th className="px-4">PRODUCT</th>
+              <th className="px-4">BATCH</th>
               <th className="px-4">IN</th>
               <th className="px-4">OK</th>
               <th className="px-4">NG</th>
@@ -148,7 +162,7 @@ export function AfterOQCTable({ transactions }: Props) {
             {paginated.length === 0 ? (
 
               <tr>
-                <td colSpan={8} className="text-center py-10 text-slate-400">
+                <td colSpan={9} className="text-center py-10 text-slate-400">
                   No QC history
                 </td>
               </tr>
@@ -175,6 +189,10 @@ export function AfterOQCTable({ transactions }: Props) {
 
                       <td className="px-4 py-2 text-slate-700">
                         {row.productName}
+                      </td>
+
+                      <td className="px-4 py-2 font-semibold text-purple-600">
+                        {row.batch}
                       </td>
 
                       <td className="px-4 py-2">
@@ -208,7 +226,7 @@ export function AfterOQCTable({ transactions }: Props) {
 
                       <tr>
 
-                        <td colSpan={8} className="bg-slate-50 px-8 py-4">
+                        <td colSpan={9} className="bg-slate-50 px-8 py-4">
 
                           <p className="font-semibold mb-3 text-slate-600">
                             Inspection History
@@ -322,4 +340,5 @@ export function AfterOQCTable({ transactions }: Props) {
     </Card>
 
   )
+
 }
