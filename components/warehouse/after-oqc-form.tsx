@@ -14,27 +14,91 @@ interface AfterOQCFormProps {
     partNo: string
     productName: string
     beforeQty: number
-  }
+  } | null
 }
 
 export function AfterOQCForm({ onSuccess, selectedQueue }: AfterOQCFormProps) {
 
   const { toast } = useToast()
 
+  /* ================= PRODUCT INFO ================= */
+
+  const [computerCode, setComputerCode] = useState('')
+  const [partNo, setPartNo] = useState('')
+  const [productName, setProductName] = useState('')
+
+  /* ================= QTY ================= */
+
   const [before, setBefore] = useState(0)
   const [ok, setOk] = useState(0)
   const [ng, setNg] = useState(0)
   const [spare, setSpare] = useState(0)
+
   const [responsiblePerson, setResponsiblePerson] = useState('')
   const [loading, setLoading] = useState(false)
 
-  useEffect(() => {
-    if (selectedQueue) {
-      setBefore(selectedQueue.beforeQty)
-      setOk(0)
-      setSpare(0)
-      setNg(0)
+  /* ================= PRODUCT LOOKUP ================= */
+
+  const lookupProduct = async (code: string) => {
+
+    if (!code) return
+
+    try {
+
+      const res = await fetch(`/api/products/lookup?computerCode=${code}`)
+
+      if (!res.ok) {
+        setPartNo('')
+        setProductName('')
+        return
+      }
+
+      const data = await res.json()
+
+      if (data) {
+        setPartNo(data.partNo || '')
+        setProductName(data.productName || '')
+      }
+
+    } catch (err) {
+      console.error('Lookup failed', err)
     }
+
+  }
+
+  /* ================= AUTO LOOKUP WHEN TYPING ================= */
+
+  useEffect(() => {
+
+    if (selectedQueue) return
+    if (!computerCode) return
+
+    const timer = setTimeout(() => {
+      lookupProduct(computerCode)
+    }, 400)
+
+    return () => clearTimeout(timer)
+
+  }, [computerCode])
+
+  /* ================= AUTO FILL FROM QUEUE ================= */
+
+  useEffect(() => {
+
+    if (selectedQueue) {
+
+      setComputerCode(selectedQueue.computerCode)
+      setPartNo(selectedQueue.partNo)
+      setProductName(selectedQueue.productName)
+
+      setBefore(selectedQueue.beforeQty)
+
+      setOk(0)
+      setNg(0)
+      setSpare(0)
+
+    }
+
   }, [selectedQueue])
 
   /* ================= CALCULATION ================= */
@@ -46,6 +110,9 @@ export function AfterOQCForm({ onSuccess, selectedQueue }: AfterOQCFormProps) {
     before > 0 ? ((ok + ng) / before) * 100 : 0
 
   const isInvalid =
+    !computerCode ||
+    !partNo ||
+    !productName ||
     !responsiblePerson ||
     ok < 0 ||
     ng < 0 ||
@@ -55,8 +122,6 @@ export function AfterOQCForm({ onSuccess, selectedQueue }: AfterOQCFormProps) {
 
   const handleSubmit = async () => {
 
-    if (!selectedQueue) return
-
     setLoading(true)
 
     try {
@@ -65,7 +130,11 @@ export function AfterOQCForm({ onSuccess, selectedQueue }: AfterOQCFormProps) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          id: selectedQueue.id,
+          id: selectedQueue?.id || null,
+          computerCode,
+          partNo,
+          productName,
+          beforeQty: before,
           afterQty: ok,
           ngQty: ng,
           spareQty: spare,
@@ -81,8 +150,16 @@ export function AfterOQCForm({ onSuccess, selectedQueue }: AfterOQCFormProps) {
         description: 'QC recorded successfully'
       })
 
-      onSuccess()
+      setComputerCode('')
+      setPartNo('')
+      setProductName('')
+      setBefore(0)
+      setOk(0)
+      setNg(0)
+      setSpare(0)
       setResponsiblePerson('')
+
+      onSuccess()
 
     } catch {
 
@@ -97,14 +174,8 @@ export function AfterOQCForm({ onSuccess, selectedQueue }: AfterOQCFormProps) {
       setLoading(false)
 
     }
-  }
 
-  if (!selectedQueue)
-    return (
-      <Card className="p-8 text-sm text-slate-400 text-center border">
-        Select item from QC Queue
-      </Card>
-    )
+  }
 
   return (
 
@@ -119,7 +190,7 @@ export function AfterOQCForm({ onSuccess, selectedQueue }: AfterOQCFormProps) {
         </h2>
 
         <span className="text-xs px-3 py-1 bg-orange-100 text-orange-700 rounded">
-          QC PENDING
+          {selectedQueue ? 'QC FROM QUEUE' : 'MANUAL QC'}
         </span>
 
       </div>
@@ -129,33 +200,45 @@ export function AfterOQCForm({ onSuccess, selectedQueue }: AfterOQCFormProps) {
       <div className="grid grid-cols-3 gap-4 bg-slate-50 border rounded p-4">
 
         <div>
+
           <p className="text-xs text-slate-500">
             Computer Code
           </p>
 
-          <p className="font-mono font-semibold text-blue-600">
-            {selectedQueue.computerCode}
-          </p>
+          <Input
+            value={computerCode}
+            disabled={!!selectedQueue}
+            onChange={(e) => {
+              setComputerCode(e.target.value.toUpperCase())
+            }}
+          />
+
         </div>
 
         <div>
+
           <p className="text-xs text-slate-500">
             Part No
           </p>
 
-          <p className="font-semibold">
-            {selectedQueue.partNo}
-          </p>
+          <Input
+            value={partNo}
+            readOnly
+          />
+
         </div>
 
         <div>
+
           <p className="text-xs text-slate-500">
             Product
           </p>
 
-          <p className="font-semibold">
-            {selectedQueue.productName}
-          </p>
+          <Input
+            value={productName}
+            readOnly
+          />
+
         </div>
 
       </div>
@@ -165,18 +248,23 @@ export function AfterOQCForm({ onSuccess, selectedQueue }: AfterOQCFormProps) {
       <div className="grid grid-cols-4 gap-4">
 
         <div>
+
           <label className="text-xs text-slate-500">
             Before
           </label>
 
           <Input
+            type="number"
             value={before}
-            readOnly
+            onChange={e => setBefore(Number(e.target.value))}
+            readOnly={!!selectedQueue}
             className="font-bold text-center"
           />
+
         </div>
 
         <div>
+
           <label className="text-xs text-slate-500">
             OK
           </label>
@@ -186,9 +274,11 @@ export function AfterOQCForm({ onSuccess, selectedQueue }: AfterOQCFormProps) {
             value={ok}
             onChange={e => setOk(Number(e.target.value))}
           />
+
         </div>
 
         <div>
+
           <label className="text-xs text-slate-500">
             Spare
           </label>
@@ -198,9 +288,11 @@ export function AfterOQCForm({ onSuccess, selectedQueue }: AfterOQCFormProps) {
             value={spare}
             onChange={e => setSpare(Number(e.target.value))}
           />
+
         </div>
 
         <div>
+
           <label className="text-xs text-slate-500">
             NG
           </label>
@@ -210,6 +302,7 @@ export function AfterOQCForm({ onSuccess, selectedQueue }: AfterOQCFormProps) {
             value={ng}
             onChange={e => setNg(Number(e.target.value))}
           />
+
         </div>
 
       </div>
@@ -219,8 +312,13 @@ export function AfterOQCForm({ onSuccess, selectedQueue }: AfterOQCFormProps) {
       <div className="space-y-2">
 
         <div className="flex justify-between text-xs text-slate-500">
+
           <span>Process Check (OK + NG)</span>
-          <span>{processTotal} / {before}</span>
+
+          <span>
+            {processTotal} / {before}
+          </span>
+
         </div>
 
         <div className="h-2 bg-slate-200 rounded">
