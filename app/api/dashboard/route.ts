@@ -77,6 +77,13 @@ export async function GET(request: NextRequest) {
         totalDeflashingQty -
         totalOutgoing
 
+      /* ================= FINAL STOCK WAREHOUSE ================= */
+
+      const finalStockWarehouse =
+        product.initialStock +
+        totalAfterOQC -
+        totalOutgoing
+
       return {
         computerCode: product.computerCode,
         partNo: product.partNo,
@@ -93,7 +100,8 @@ export async function GET(request: NextRequest) {
         totalDeflashingQty,
         totalDeflashingNG,
 
-        finalStock
+        finalStock,
+        finalStockWarehouse
       }
 
     })

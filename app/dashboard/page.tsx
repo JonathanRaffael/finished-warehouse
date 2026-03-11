@@ -19,14 +19,15 @@ interface DashboardItem {
   totalAfterOQC: number;
   totalOutgoing: number;
 
-  totalDeflashing: number;
   totalDeflashingQty: number;
   totalDeflashingNG: number;
 
   finalStock: number;
+  finalStockWarehouse: number;
 }
 
 export default function DashboardPage() {
+
   const [data, setData] = useState<DashboardItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -39,9 +40,11 @@ export default function DashboardPage() {
   }, []);
 
   const fetchDashboard = async () => {
+
     setLoading(true);
 
     try {
+
       const res = await fetch('/api/dashboard');
 
       if (res.ok) {
@@ -50,11 +53,17 @@ export default function DashboardPage() {
       } else {
         setData([]);
       }
+
     } catch {
+
       setData([]);
+
     } finally {
+
       setLoading(false);
+
     }
+
   };
 
   /* ================= FILTER + SORT ================= */
@@ -75,7 +84,6 @@ export default function DashboardPage() {
 
     });
 
-    // SORT LOCATION A → Z
     return filteredData.sort((a, b) =>
       (a.location || '').localeCompare(b.location || '')
     );
@@ -85,33 +93,58 @@ export default function DashboardPage() {
   /* ================= STATS ================= */
 
   const stats = useMemo(() => {
+
     return {
+
       sku: filtered.length,
+
       incoming: filtered.reduce(
         (a, b) => a + (b.totalIncoming || 0),
         0
       ),
+
       afterOqc: filtered.reduce(
         (a, b) => a + (b.totalAfterOQC || 0),
         0
       ),
+
       deflashing: filtered.reduce(
         (a, b) => a + (b.totalDeflashingQty || 0),
         0
       ),
+
       outgoing: filtered.reduce(
         (a, b) => a + (b.totalOutgoing || 0),
         0
       ),
+
+      warehouseStock: filtered.reduce(
+        (a, b) => a + (b.finalStockWarehouse || 0),
+        0
+      )
+
     };
+
   }, [filtered]);
 
+  const format = (n:number)=> n.toLocaleString()
+
+  const stockColor = (n:number)=>{
+
+    if(n < 0) return 'text-red-700 bg-red-100'
+    if(n < 50) return 'text-orange-700 bg-orange-100'
+    return 'text-green-700 bg-green-100'
+
+  }
+
   return (
+
     <div className="space-y-6">
 
       {/* HEADER */}
 
       <div className="flex items-center justify-between">
+
         <div>
           <h1 className="text-2xl font-bold text-slate-900">
             Inventory Dashboard
@@ -125,11 +158,12 @@ export default function DashboardPage() {
         <span className="text-xs bg-slate-100 px-3 py-1 rounded">
           {filtered.length} items
         </span>
+
       </div>
 
       {/* STAT CARDS */}
 
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
 
         <Card className="p-4 border shadow-sm hover:shadow transition">
           <p className="text-xs text-slate-500">Total SKU</p>
@@ -139,47 +173,54 @@ export default function DashboardPage() {
         <Card className="p-4 border shadow-sm hover:shadow transition">
           <p className="text-xs text-slate-500">Incoming</p>
           <h2 className="text-2xl font-bold text-green-600 tabular-nums">
-            {stats.incoming}
+            {format(stats.incoming)}
           </h2>
         </Card>
 
         <Card className="p-4 border shadow-sm hover:shadow transition">
           <p className="text-xs text-slate-500">After OQC</p>
           <h2 className="text-2xl font-bold text-yellow-600 tabular-nums">
-            {stats.afterOqc}
+            {format(stats.afterOqc)}
           </h2>
         </Card>
 
         <Card className="p-4 border shadow-sm hover:shadow transition">
           <p className="text-xs text-slate-500">Deflashing</p>
           <h2 className="text-2xl font-bold text-blue-600 tabular-nums">
-            {stats.deflashing}
+            {format(stats.deflashing)}
           </h2>
         </Card>
 
         <Card className="p-4 border shadow-sm hover:shadow transition">
           <p className="text-xs text-slate-500">Outgoing</p>
           <h2 className="text-2xl font-bold text-red-600 tabular-nums">
-            {stats.outgoing}
+            {format(stats.outgoing)}
+          </h2>
+        </Card>
+
+        <Card className="p-4 border shadow-sm hover:shadow transition">
+          <p className="text-xs text-slate-500">Warehouse Stock</p>
+          <h2 className="text-2xl font-bold text-purple-600 tabular-nums">
+            {format(stats.warehouseStock)}
           </h2>
         </Card>
 
       </div>
 
-      {/* FILTER BAR */}
+      {/* FILTER */}
 
       <Card className="p-4 flex flex-wrap gap-4 items-center border shadow-sm">
 
         <Input
           placeholder="Search code / part / product"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e)=>setSearch(e.target.value)}
           className="max-w-sm"
         />
 
         <select
           value={prodFilter}
-          onChange={(e) => setProdFilter(e.target.value as any)}
+          onChange={(e)=>setProdFilter(e.target.value as any)}
           className="border rounded-md px-3 py-2 text-sm bg-white"
         >
           <option value="ALL">ALL</option>
@@ -202,18 +243,19 @@ export default function DashboardPage() {
               <tr>
 
                 {[
-                  'COMPUTER CODE',
-                  'PART NO',
-                  'PRODUCT NAME',
+                  'CODE',
+                  'PART',
+                  'PRODUCT',
                   'PROD',
                   'LOC',
                   'INITIAL',
-                  'INCOMING',
+                  'IN',
                   'AFTER OQC',
-                  'DEFLASHING',
-                  'OUTGOING',
-                  'FINAL STOCK',
-                ].map((h) => (
+                  'DEFLASH',
+                  'OUT',
+                  'FINAL',
+                  'WH STOCK'
+                ].map((h)=>(
 
                   <th
                     key={h}
@@ -233,7 +275,7 @@ export default function DashboardPage() {
               {loading ? (
 
                 <tr>
-                  <td colSpan={11} className="py-10 text-center text-slate-500">
+                  <td colSpan={12} className="py-10 text-center text-slate-500">
                     Loading dashboard...
                   </td>
                 </tr>
@@ -241,14 +283,14 @@ export default function DashboardPage() {
               ) : filtered.length === 0 ? (
 
                 <tr>
-                  <td colSpan={11} className="py-10 text-center text-slate-400">
+                  <td colSpan={12} className="py-10 text-center text-slate-400">
                     No data found
                   </td>
                 </tr>
 
               ) : (
 
-                filtered.map((r, i) => (
+                filtered.map((r,i)=>(
 
                   <tr
                     key={r.computerCode}
@@ -286,27 +328,31 @@ export default function DashboardPage() {
                     </td>
 
                     <td className="px-3 py-2 tabular-nums">
-                      {r.initialStock}
+                      {format(r.initialStock)}
                     </td>
 
                     <td className="px-3 py-2 tabular-nums text-green-700">
-                      {r.totalIncoming}
+                      {format(r.totalIncoming)}
                     </td>
 
                     <td className="px-3 py-2 tabular-nums bg-yellow-100">
-                      {r.totalAfterOQC}
+                      {format(r.totalAfterOQC)}
                     </td>
 
                     <td className="px-3 py-2 tabular-nums bg-blue-100 text-blue-700">
-                      {r.totalDeflashingQty}
+                      {format(r.totalDeflashingQty)}
                     </td>
 
                     <td className="px-3 py-2 tabular-nums text-red-600">
-                      {r.totalOutgoing}
+                      {format(r.totalOutgoing)}
                     </td>
 
                     <td className="px-3 py-2 tabular-nums font-bold bg-green-100">
-                      {r.finalStock}
+                      {format(r.finalStock)}
+                    </td>
+
+                    <td className={`px-3 py-2 tabular-nums font-bold ${stockColor(r.finalStockWarehouse)}`}>
+                      {format(r.finalStockWarehouse)}
                     </td>
 
                   </tr>
@@ -324,5 +370,6 @@ export default function DashboardPage() {
       </Card>
 
     </div>
+
   );
 }
