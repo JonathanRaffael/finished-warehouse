@@ -84,7 +84,7 @@ model IncomingTransaction {
   remainingQty Int?
   status       String? @default("OPEN")
 
-  batch Int @default(0)
+  batch String? @db.VarChar(50)
   responsiblePerson String @db.VarChar(100)
 
   createdAt DateTime @default(now())
@@ -111,7 +111,7 @@ model AfterOQCTransaction {
   partNo       String @db.VarChar(50)
   productName  String @db.VarChar(255)
 
-  batch Int? // ✅ TAMBAHKAN INI
+  batch String? @db.VarChar(50)
 
   beforeQty Int
   afterQty  Int @default(0)
@@ -206,7 +206,7 @@ model Deflashing {
   incomingBy  String
   processedBy String?
 
-  batchNo Int?   // 🔥 TAMBAHKAN INI
+  batchNo String? @db.VarChar(50)
 
   createdAt   DateTime @default(now())
   completedAt DateTime?
@@ -222,7 +222,7 @@ model DeflashingProcessLog {
   deflashingId String
   deflashing   Deflashing @relation(fields: [deflashingId], references: [id], onDelete: Cascade)
 
-  batchNo Int?   // ✅ TAMBAHKAN INI
+  batchNo String? @db.VarChar(50)
 
   qtyOut   Int
   ngQty    Int
