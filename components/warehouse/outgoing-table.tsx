@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 interface Transaction {
   id: string
   date: string
+  createdAt: string
   computerCode: string | null
   partNo: string | null
   productName: string | null
@@ -22,10 +23,10 @@ export function OutgoingTable({ transactions }: OutgoingTableProps) {
 
   const [search, setSearch] = useState('')
 
-  /* SORT BY DATE (OLDEST FIRST) */
+  /* SORT BY CREATED AT (FIRST CREATED → LAST) */
 
   const sortedTransactions = [...transactions].sort((a, b) => {
-    return new Date(a.date).getTime() - new Date(b.date).getTime()
+    return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
   })
 
   /* FILTER SEARCH */
