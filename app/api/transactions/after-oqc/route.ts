@@ -40,6 +40,7 @@ export async function POST(req: NextRequest) {
       computerCode,
       partNo,
       productName,
+      batch, // ⭐ ambil batch
       beforeQty,
       afterQty,
       ngQty,
@@ -62,6 +63,8 @@ export async function POST(req: NextRequest) {
           computerCode: String(computerCode),
           partNo: String(partNo),
           productName: String(productName),
+
+          batch: batch ? Number(batch) : null, // ⭐ simpan batch
 
           beforeQty: Number(beforeQty),
 
@@ -144,7 +147,7 @@ export async function POST(req: NextRequest) {
       where: { id },
       data: {
 
-        beforeQty: remaining > 0 ? remaining : 0, // ✅ remaining queue
+        beforeQty: remaining > 0 ? remaining : 0,
 
         afterQty: totalAfter,
         ngQty: totalNg,

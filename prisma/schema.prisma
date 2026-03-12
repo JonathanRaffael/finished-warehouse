@@ -124,8 +124,8 @@ model AfterOQCTransaction {
 
   responsiblePerson String? @db.VarChar(100)
 
-  incomingId String
-  incoming   IncomingTransaction @relation(fields: [incomingId], references: [id], onDelete: Cascade)
+  incomingId String?
+  incoming   IncomingTransaction? @relation(fields: [incomingId], references: [id], onDelete: Cascade)
 
   product Product @relation(fields: [computerCode], references: [computerCode], onDelete: Cascade)
 
