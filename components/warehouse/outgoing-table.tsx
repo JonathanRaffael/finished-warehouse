@@ -22,7 +22,15 @@ export function OutgoingTable({ transactions }: OutgoingTableProps) {
 
   const [search, setSearch] = useState('')
 
-  const filteredTransactions = transactions.filter(tx => {
+  /* SORT BY DATE (OLDEST FIRST) */
+
+  const sortedTransactions = [...transactions].sort((a, b) => {
+    return new Date(a.date).getTime() - new Date(b.date).getTime()
+  })
+
+  /* FILTER SEARCH */
+
+  const filteredTransactions = sortedTransactions.filter(tx => {
 
     const code = tx.computerCode || ''
     const part = tx.partNo || ''
