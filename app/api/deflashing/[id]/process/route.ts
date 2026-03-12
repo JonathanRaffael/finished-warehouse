@@ -5,6 +5,7 @@ export async function PATCH(
   req: Request,
   context: { params: Promise<{ id: string }> }
 ) {
+
   try {
 
     const { id } = await context.params
@@ -66,6 +67,7 @@ export async function PATCH(
     await prisma.deflashingProcessLog.create({
       data: {
         deflashingId: id,
+        batchNo: record.batchNo,   // ✅ batch ikut disimpan
         qtyOut,
         ngQty,
         spareQty: 0,
@@ -108,9 +110,12 @@ export async function PATCH(
 
         await prisma.afterOQCTransaction.create({
           data: {
+
             computerCode: record.computerCode,
             partNo: record.partNo,
             productName: record.productName,
+
+            batch: record.batchNo,   // ✅ FIX: batch ikut dibawa ke QC Queue
 
             beforeQty: qtyOut,
 
@@ -120,13 +125,21 @@ export async function PATCH(
 
             status: 'PENDING',
 
+            source: 'DEFLASHING',
+
             responsiblePerson: processedBy,
 
             incomingId: record.incomingId
+
           }
         })
 
-        console.log('✅ QC Queue created from Deflashing:', record.computerCode)
+        console.log(
+          '✅ QC Queue created from Deflashing:',
+          record.computerCode,
+          'Batch:',
+          record.batchNo
+        )
 
       }
 
@@ -144,4 +157,5 @@ export async function PATCH(
     )
 
   }
+
 }

@@ -5,50 +5,13 @@ export async function GET() {
 
   try {
 
-    /* ================= QC FROM INCOMING ================= */
+    /* ================= QC QUEUE FROM INCOMING ================= */
 
-    const incoming = await prisma.incomingTransaction.findMany({
-
-      where: {
-        remainingQty: {
-          gt: 0
-        }
-      },
-
-      orderBy: {
-        createdAt: 'asc'
-      },
-
-      select: {
-        id: true,
-        computerCode: true,
-        partNo: true,
-        productName: true,
-        batch: true,
-        remainingQty: true
-      }
-
-    })
-
-    const incomingQueue = incoming.map(i => ({
-      id: i.id,
-      computerCode: i.computerCode,
-      partNo: i.partNo,
-      productName: i.productName,
-      batch: i.batch ?? 0,
-      beforeQty: i.remainingQty,
-      afterQty: 0,
-      ngQty: 0,
-      spareQty: 0
-    }))
-
-
-    /* ================= QC FROM DEFLASHING ================= */
-
-    const deflashingQueue = await prisma.afterOQCTransaction.findMany({
+    const incomingQC = await prisma.afterOQCTransaction.findMany({
 
       where: {
-        status: 'PENDING'
+        status: 'PENDING',
+        source: 'INCOMING'
       },
 
       orderBy: {
@@ -61,26 +24,77 @@ export async function GET() {
         partNo: true,
         productName: true,
         beforeQty: true,
-        afterQty: true,
-        ngQty: true,
-        spareQty: true
+        batch: true        // ✅ TAMBAHKAN
       }
 
     })
+
+    const incomingQueue = incomingQC.map((q) => ({
+      id: q.id,
+      computerCode: q.computerCode,
+      partNo: q.partNo,
+      productName: q.productName,
+      batch: q.batch,      // ✅ GUNAKAN NILAI DARI DB
+      beforeQty: q.beforeQty,
+      afterQty: 0,
+      ngQty: 0,
+      spareQty: 0
+    }))
+
+
+    /* ================= QC QUEUE FROM DEFLASHING ================= */
+
+    const deflashingQC = await prisma.afterOQCTransaction.findMany({
+
+      where: {
+        status: 'PENDING',
+        source: 'DEFLASHING'
+      },
+
+      orderBy: {
+        createdAt: 'asc'
+      },
+
+      select: {
+        id: true,
+        computerCode: true,
+        partNo: true,
+        productName: true,
+        beforeQty: true,
+        batch: true        // ✅ TAMBAHKAN
+      }
+
+    })
+
+    const deflashingQueue = deflashingQC.map((d) => ({
+      id: d.id,
+      computerCode: d.computerCode,
+      partNo: d.partNo,
+      productName: d.productName,
+      batch: d.batch,      // ✅ GUNAKAN NILAI DARI DB
+      beforeQty: d.beforeQty,
+      afterQty: 0,
+      ngQty: 0,
+      spareQty: 0
+    }))
+
 
     return NextResponse.json({
       incomingQueue,
       deflashingQueue
     })
 
-  } catch (e) {
+  } catch (error) {
 
-    console.error('[QC_QUEUE]', e)
+    console.error('[QC_QUEUE_ERROR]', error)
 
-    return NextResponse.json({
-      incomingQueue: [],
-      deflashingQueue: []
-    }, { status: 500 })
+    return NextResponse.json(
+      {
+        incomingQueue: [],
+        deflashingQueue: []
+      },
+      { status: 500 }
+    )
 
   }
 

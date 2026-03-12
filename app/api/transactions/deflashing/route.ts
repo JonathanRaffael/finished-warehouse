@@ -4,16 +4,20 @@ import { prisma } from '@/lib/prisma'
 /* ================= GET : HISTORY ================= */
 
 export async function GET() {
+
   try {
 
     const data = await prisma.deflashing.findMany({
+
       orderBy: {
         createdAt: 'desc'
       },
+
       select: {
+
         id: true,
 
-        incomingId: true, // 🔥 penting untuk debug
+        incomingId: true,
 
         computerCode: true,
         partNo: true,
@@ -33,7 +37,9 @@ export async function GET() {
 
         createdAt: true,
         completedAt: true
+
       }
+
     })
 
     return NextResponse.json(data)
@@ -42,9 +48,13 @@ export async function GET() {
 
     console.error('[DEFLASHING GET ERROR]', error)
 
-    return new NextResponse('Internal Server Error', { status: 500 })
+    return new NextResponse(
+      'Internal Server Error',
+      { status: 500 }
+    )
 
   }
+
 }
 
 
@@ -57,7 +67,8 @@ export async function POST(req: Request) {
     const body = await req.json()
 
     const {
-      incomingId,   // 🔥 WAJIB
+
+      incomingId,
       computerCode,
       partNo,
       productName,
@@ -65,6 +76,7 @@ export async function POST(req: Request) {
       qtyIn,
       batchNo,
       incomingBy
+
     } = body
 
     /* ================= VALIDATION ================= */
@@ -77,7 +89,21 @@ export async function POST(req: Request) {
       !processType ||
       !incomingBy
     ) {
-      return new NextResponse('Invalid payload', { status: 400 })
+
+      return new NextResponse(
+        'Invalid payload',
+        { status: 400 }
+      )
+
+    }
+
+    if (!qtyIn || Number(qtyIn) <= 0) {
+
+      return new NextResponse(
+        'Invalid quantity',
+        { status: 400 }
+      )
+
     }
 
     /* ================= CREATE ================= */
@@ -86,7 +112,7 @@ export async function POST(req: Request) {
 
       data: {
 
-        incomingId, // 🔥 SIMPAN RELASI
+        incomingId,
 
         computerCode,
         partNo,
@@ -94,9 +120,10 @@ export async function POST(req: Request) {
 
         productionType: processType,
 
-        qtyIn: Number(qtyIn) || 0,
+        qtyIn: Number(qtyIn),
 
-        batchNo: Number(batchNo) || 0,
+        // batch tidak dipaksa 0 agar tidak hilang di UI
+        batchNo: batchNo ? Number(batchNo) : null,
 
         incomingBy
 
@@ -104,13 +131,19 @@ export async function POST(req: Request) {
 
     })
 
-    return NextResponse.json(data, { status: 201 })
+    return NextResponse.json(
+      data,
+      { status: 201 }
+    )
 
   } catch (error) {
 
     console.error('[DEFLASHING POST ERROR]', error)
 
-    return new NextResponse('Internal Server Error', { status: 500 })
+    return new NextResponse(
+      'Internal Server Error',
+      { status: 500 }
+    )
 
   }
 

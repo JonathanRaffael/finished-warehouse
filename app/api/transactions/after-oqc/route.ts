@@ -1,12 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
+/* ================= GET : QC QUEUE ================= */
+
 export async function GET() {
+
   try {
 
     const data = await prisma.afterOQCTransaction.findMany({
-      where: { status: 'PENDING' },
-      orderBy: { createdAt: 'asc' }
+      where: {
+        status: 'PENDING'
+      },
+      orderBy: {
+        createdAt: 'asc'
+      }
     })
 
     return NextResponse.json(data)
@@ -16,7 +23,11 @@ export async function GET() {
     return NextResponse.json([], { status: 500 })
 
   }
+
 }
+
+
+/* ================= POST : PROCESS QC ================= */
 
 export async function POST(req: NextRequest) {
 
@@ -47,23 +58,25 @@ export async function POST(req: NextRequest) {
     if (!id) {
 
       const created = await prisma.afterOQCTransaction.create({
-  data: {
-    computerCode: String(computerCode),
-    partNo: String(partNo),
-    productName: String(productName),
-    beforeQty: Number(beforeQty),
+        data: {
+          computerCode: String(computerCode),
+          partNo: String(partNo),
+          productName: String(productName),
 
-    afterQty: addAfter,
-    ngQty: addNg,
-    spareQty: addSpare,
+          beforeQty: Number(beforeQty),
 
-    responsiblePerson: responsiblePerson || null,
+          afterQty: addAfter,
+          ngQty: addNg,
+          spareQty: addSpare,
 
-    status: 'DONE',
+          responsiblePerson: responsiblePerson || null,
 
-    incomingId: null
-  } as any
-})
+          status: 'DONE',
+
+          incomingId: null
+        } as any
+      })
+
       transactionId = created.id
 
       await prisma.afterOQCLog.create({
@@ -76,9 +89,13 @@ export async function POST(req: NextRequest) {
         }
       })
 
-      return NextResponse.json({ success: true, manual: true })
+      return NextResponse.json({
+        success: true,
+        manual: true
+      })
 
     }
+
 
     /* ================= QUEUE MODE ================= */
 
@@ -95,7 +112,8 @@ export async function POST(req: NextRequest) {
 
     }
 
-    // simpan log QC batch
+    /* ================= SAVE QC LOG ================= */
+
     await prisma.afterOQCLog.create({
       data: {
         afterOQCId: id,
@@ -106,26 +124,39 @@ export async function POST(req: NextRequest) {
       }
     })
 
-    // update summary QC
+
+    /* ================= CALCULATE ================= */
+
+    const processedNow = addAfter + addNg
+
     const totalAfter = existing.afterQty + addAfter
     const totalNg = existing.ngQty + addNg
     const totalSpare = existing.spareQty + addSpare
 
-    const checked = totalAfter + totalNg
-    const remaining = existing.beforeQty - checked
+    const remaining = existing.beforeQty - processedNow
 
     const status = remaining <= 0 ? 'DONE' : 'PENDING'
+
+
+    /* ================= UPDATE TRANSACTION ================= */
 
     await prisma.afterOQCTransaction.update({
       where: { id },
       data: {
+
+        beforeQty: remaining > 0 ? remaining : 0, // ✅ remaining queue
+
         afterQty: totalAfter,
         ngQty: totalNg,
         spareQty: totalSpare,
+
         responsiblePerson,
+
         status
+
       }
     })
+
 
     return NextResponse.json({
       success: true,

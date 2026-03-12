@@ -21,6 +21,7 @@ interface Transaction {
 }
 
 export default function IncomingPage() {
+
   const [incomingQueue, setIncomingQueue] = useState<Transaction[]>([])
   const [incomingHistory, setIncomingHistory] = useState<Transaction[]>([])
   const [loading, setLoading] = useState(true)
@@ -44,7 +45,12 @@ export default function IncomingPage() {
 
   const refreshAll = async () => {
     setLoading(true)
-    await Promise.all([fetchIncomingQueue(), fetchIncomingHistory()])
+
+    await Promise.all([
+      fetchIncomingQueue(),
+      fetchIncomingHistory()
+    ])
+
     setLoading(false)
   }
 
@@ -53,10 +59,11 @@ export default function IncomingPage() {
   }, [])
 
   // ======================
-  // RELEASE TO QC (NOT SHIPMENT!)
+  // RELEASE TO QC
   // ======================
 
   const submitToQC = async () => {
+
     if (!selected) return
     if (!qty || qty <= 0) return setError('Qty wajib diisi')
     if (qty > selected.remainingQty) return setError('Qty melebihi Remaining')
@@ -66,6 +73,7 @@ export default function IncomingPage() {
     setError('')
 
     try {
+
       const res = await fetch('/api/transactions/after-oqc/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -83,18 +91,25 @@ export default function IncomingPage() {
       setPerson('')
 
       refreshAll()
+
     } finally {
+
       setSubmitting(false)
+
     }
+
   }
 
   return (
+
     <div className="space-y-10">
 
       <IncomingForm onSuccess={refreshAll} />
 
       {!loading && (
+
         <>
+
           <h2 className="font-bold text-lg">📥 Incoming Queue</h2>
 
           <IncomingTable
@@ -104,15 +119,20 @@ export default function IncomingPage() {
 
           <h2 className="font-bold text-lg pt-8">📦 Incoming History</h2>
 
+          {/* FIX: jangan hideAction supaya History bisa dibuka */}
+
           <IncomingTable
             transactions={incomingHistory}
-            hideAction
           />
+
         </>
+
       )}
 
       {selected && (
+
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+
           <Card className="w-full max-w-md p-6 space-y-5">
 
             <h3 className="text-lg font-bold">🧪 Release to QC</h3>
@@ -120,8 +140,12 @@ export default function IncomingPage() {
             <p>{selected.productName}</p>
 
             <div className="bg-slate-50 rounded p-3 text-sm">
+
               Remaining:
-              <b className="ml-2 text-orange-600">{selected.remainingQty}</b>
+              <b className="ml-2 text-orange-600">
+                {selected.remainingQty}
+              </b>
+
             </div>
 
             <Input
@@ -137,22 +161,38 @@ export default function IncomingPage() {
               onChange={e => setPerson(e.target.value)}
             />
 
-            {error && <p className="text-sm text-red-600">{error}</p>}
+            {error && (
+              <p className="text-sm text-red-600">{error}</p>
+            )}
 
             <div className="flex gap-2 pt-2">
-              <Button variant="outline" className="flex-1" onClick={() => setSelected(null)}>
+
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => setSelected(null)}
+              >
                 Cancel
               </Button>
 
-              <Button className="flex-1" disabled={submitting} onClick={submitToQC}>
+              <Button
+                className="flex-1"
+                disabled={submitting}
+                onClick={submitToQC}
+              >
                 {submitting ? 'Saving...' : 'Release QC'}
               </Button>
+
             </div>
 
           </Card>
+
         </div>
+
       )}
 
     </div>
+
   )
+
 }

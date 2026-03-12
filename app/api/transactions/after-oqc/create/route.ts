@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
 export async function POST(req: NextRequest) {
+
   try {
+
     const body = await req.json()
 
     const { incomingId, qty, responsiblePerson } = body
@@ -11,7 +13,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: 'Invalid payload' }, { status: 400 })
     }
 
-    // ambil incoming
     const incoming = await prisma.incomingTransaction.findUnique({
       where: { id: incomingId }
     })
@@ -24,36 +25,25 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: 'Qty exceeds remaining' }, { status: 400 })
     }
 
-    // cari existing QC
-    let afterOQC = await prisma.afterOQCTransaction.findFirst({
-      where: {
-        incomingId
+    // 🔥 CREATE record QC baru (untuk history parsial)
+
+    const afterOQC = await prisma.afterOQCTransaction.create({
+      data: {
+        incomingId,
+        computerCode: incoming.computerCode,
+        partNo: incoming.partNo,
+        productName: incoming.productName,
+
+        batch: incoming.batch,        // ✅ FIX: bawa batch dari incoming
+        beforeQty: qty,
+
+        responsiblePerson,
+        source: 'INCOMING'
       }
     })
 
-    // kalau belum ada QC record → create
-    if (!afterOQC) {
-      afterOQC = await prisma.afterOQCTransaction.create({
-        data: {
-          incomingId,
-          computerCode: incoming.computerCode,
-          partNo: incoming.partNo,
-          productName: incoming.productName,
-          beforeQty: qty,
-          responsiblePerson
-        }
-      })
-    } else {
-      // kalau sudah ada → tambah beforeQty
-      await prisma.afterOQCTransaction.update({
-        where: { id: afterOQC.id },
-        data: {
-          beforeQty: afterOQC.beforeQty + qty
-        }
-      })
-    }
+    // insert QC log
 
-    // insert QC LOG (batch)
     await prisma.afterOQCLog.create({
       data: {
         afterOQCId: afterOQC.id,
@@ -64,7 +54,8 @@ export async function POST(req: NextRequest) {
       }
     })
 
-    // update incoming remaining
+    // update remaining incoming
+
     const newRemaining = incoming.remainingQty - qty
 
     await prisma.incomingTransaction.update({
@@ -76,8 +67,13 @@ export async function POST(req: NextRequest) {
     })
 
     return NextResponse.json({ success: true })
+
   } catch (e) {
+
     console.error('[QC CREATE]', e)
+
     return NextResponse.json({ message: 'Server error' }, { status: 500 })
+
   }
+
 }

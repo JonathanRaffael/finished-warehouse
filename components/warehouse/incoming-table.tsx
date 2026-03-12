@@ -66,7 +66,7 @@ export function IncomingTable({
       newBatch: editBatch
     })
 
-    // nanti disini bisa fetch API update
+    // nanti disini fetch API update
 
     setEditingId(null)
   }
@@ -181,7 +181,7 @@ export function IncomingTable({
                         {tx.productName}
                       </td>
 
-                      {/* BATCH EDIT */}
+                      {/* BATCH */}
                       <td className="font-semibold text-purple-600">
 
                         {editingId === tx.id ? (
@@ -199,7 +199,7 @@ export function IncomingTable({
 
                       </td>
 
-                      {/* INCOMING EDIT */}
+                      {/* INCOMING */}
                       <td className="font-bold text-green-600">
 
                         {editingId === tx.id ? (
@@ -217,6 +217,7 @@ export function IncomingTable({
 
                       </td>
 
+                      {/* REMAINING */}
                       <td className="font-bold text-orange-600">
 
                         {tx.remainingQty}
@@ -308,6 +309,8 @@ export function IncomingTable({
 
                     </tr>
 
+                    {/* HISTORY ROW */}
+
                     {expandedId === tx.id && (
 
                       <tr>
@@ -322,7 +325,7 @@ export function IncomingTable({
                             <div className="flex justify-between items-center">
 
                               <p className="text-xs font-semibold text-slate-600">
-                                📤 Outgoing History
+                                📤 Outgoing History ({tx.outgoingTransactions?.length || 0} process)
                               </p>
 
                               <span className="text-xs text-slate-400">
@@ -339,32 +342,38 @@ export function IncomingTable({
 
                               <div className="space-y-2">
 
-                                {tx.outgoingTransactions.map(h => (
+                                {tx.outgoingTransactions
+                                  .sort(
+                                    (a, b) =>
+                                      new Date(b.createdAt).getTime() -
+                                      new Date(a.createdAt).getTime()
+                                  )
+                                  .map((h, i) => (
 
-                                  <div
-                                    key={h.id}
-                                    className="flex justify-between items-center bg-white rounded border px-4 py-2"
-                                  >
+                                    <div
+                                      key={h.id}
+                                      className="flex justify-between items-center bg-white rounded border px-4 py-2"
+                                    >
 
-                                    <div>
+                                      <div>
 
-                                      <p className="text-xs text-slate-500">
-                                        {new Date(h.createdAt).toLocaleString()}
-                                      </p>
+                                        <p className="text-xs text-slate-500">
+                                          {new Date(h.createdAt).toLocaleString('id-ID')}
+                                        </p>
 
-                                      <p className="text-xs font-medium">
-                                        Operator: {h.responsiblePerson}
-                                      </p>
+                                        <p className="text-xs font-medium text-slate-700">
+                                          Partial #{i + 1} • Operator: {h.responsiblePerson}
+                                        </p>
+
+                                      </div>
+
+                                      <span className="text-sm font-bold text-red-600">
+                                        -{h.qtyOut}
+                                      </span>
 
                                     </div>
 
-                                    <span className="text-sm font-bold text-red-600">
-                                      -{h.qtyOut}
-                                    </span>
-
-                                  </div>
-
-                                ))}
+                                  ))}
 
                               </div>
 
