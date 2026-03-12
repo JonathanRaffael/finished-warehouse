@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
       computerCode,
       partNo,
       productName,
-      batch, // ⭐ ambil batch
+      batch,
       beforeQty,
       afterQty,
       ngQty,
@@ -54,19 +54,21 @@ export async function POST(req: NextRequest) {
 
     let transactionId = id
 
+
     /* ================= MANUAL MODE ================= */
 
     if (!id) {
 
       const created = await prisma.afterOQCTransaction.create({
         data: {
+
           computerCode: String(computerCode),
           partNo: String(partNo),
           productName: String(productName),
 
-          batch: batch ? Number(batch) : null, // ⭐ simpan batch
+          batch: batch ? String(batch).trim() : null,
 
-          beforeQty: Number(beforeQty),
+          beforeQty: Number(beforeQty) || 0,
 
           afterQty: addAfter,
           ngQty: addNg,
@@ -77,10 +79,11 @@ export async function POST(req: NextRequest) {
           status: 'DONE',
 
           incomingId: null
-        } as any
+        }
       })
 
       transactionId = created.id
+
 
       await prisma.afterOQCLog.create({
         data: {
@@ -91,6 +94,7 @@ export async function POST(req: NextRequest) {
           responsiblePerson
         }
       })
+
 
       return NextResponse.json({
         success: true,
@@ -114,6 +118,7 @@ export async function POST(req: NextRequest) {
       )
 
     }
+
 
     /* ================= SAVE QC LOG ================= */
 

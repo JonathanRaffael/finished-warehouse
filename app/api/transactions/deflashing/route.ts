@@ -79,6 +79,7 @@ export async function POST(req: Request) {
 
     } = body
 
+
     /* ================= VALIDATION ================= */
 
     if (
@@ -106,6 +107,7 @@ export async function POST(req: Request) {
 
     }
 
+
     /* ================= CREATE ================= */
 
     const data = await prisma.deflashing.create({
@@ -114,18 +116,18 @@ export async function POST(req: Request) {
 
         incomingId,
 
-        computerCode,
-        partNo,
-        productName,
+        computerCode: String(computerCode),
+        partNo: String(partNo),
+        productName: String(productName),
 
         productionType: processType,
 
         qtyIn: Number(qtyIn),
 
-        // batch tidak dipaksa 0 agar tidak hilang di UI
-        batchNo: batchNo ? Number(batchNo) : null,
+        // batch sekarang String
+        batchNo: batchNo ? String(batchNo).trim() : null,
 
-        incomingBy
+        incomingBy: String(incomingBy)
 
       }
 
