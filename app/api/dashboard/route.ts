@@ -38,10 +38,10 @@ export async function GET(request: NextRequest) {
         0
       )
 
-      /* ================= AFTER OQC ================= */
+      /* ================= AFTER OQC (OK + SPARE) ================= */
 
       const totalAfterOQC = product.afterOQCTransactions.reduce(
-        (sum, t) => sum + t.afterQty,
+        (sum, t) => sum + t.afterQty + (t.spareQty || 0),
         0
       )
 
