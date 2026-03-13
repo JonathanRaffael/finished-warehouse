@@ -13,6 +13,7 @@ interface Transaction {
   productName: string | null
   qtyOut: number
   responsiblePerson: string
+  remark: string | null
 }
 
 interface OutgoingTableProps {
@@ -23,7 +24,7 @@ export function OutgoingTable({ transactions }: OutgoingTableProps) {
 
   const [search, setSearch] = useState('')
 
-  /* SORT BY CREATED AT (FIRST CREATED → LAST) */
+  /* SORT BY CREATED AT */
 
   const sortedTransactions = [...transactions].sort((a, b) => {
     return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
@@ -36,11 +37,13 @@ export function OutgoingTable({ transactions }: OutgoingTableProps) {
     const code = tx.computerCode || ''
     const part = tx.partNo || ''
     const product = tx.productName || ''
+    const remark = tx.remark || ''
 
     return (
       code.toLowerCase().includes(search.toLowerCase()) ||
       product.toLowerCase().includes(search.toLowerCase()) ||
-      part.toLowerCase().includes(search.toLowerCase())
+      part.toLowerCase().includes(search.toLowerCase()) ||
+      remark.toLowerCase().includes(search.toLowerCase())
     )
 
   })
@@ -58,7 +61,7 @@ export function OutgoingTable({ transactions }: OutgoingTableProps) {
         </h2>
 
         <Input
-          placeholder="Search code / part / product..."
+          placeholder="Search code / part / product / remark..."
           value={search}
           onChange={e => setSearch(e.target.value)}
           className="max-w-sm"
@@ -82,6 +85,7 @@ export function OutgoingTable({ transactions }: OutgoingTableProps) {
               <th className="px-3 text-left">PRODUCT</th>
               <th className="px-3 text-center text-red-600">QTY OUT</th>
               <th className="px-3 text-left">RESPONSIBLE</th>
+              <th className="px-3 text-left">REMARK</th>
 
             </tr>
 
@@ -92,7 +96,7 @@ export function OutgoingTable({ transactions }: OutgoingTableProps) {
             {filteredTransactions.length === 0 ? (
 
               <tr>
-                <td colSpan={6} className="text-center py-10 text-slate-400">
+                <td colSpan={7} className="text-center py-10 text-slate-400">
                   No outgoing transactions
                 </td>
               </tr>
@@ -130,6 +134,10 @@ export function OutgoingTable({ transactions }: OutgoingTableProps) {
 
                   <td className="px-3 py-3">
                     {tx.responsiblePerson}
+                  </td>
+
+                  <td className="px-3 py-3 text-slate-500">
+                    {tx.remark || '-'}
                   </td>
 
                 </tr>
