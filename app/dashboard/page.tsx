@@ -16,6 +16,7 @@ interface DashboardItem {
   initialStock: number;
 
   totalIncoming: number;
+  beforeOQC: number;
   totalAfterOQC: number;
   totalOutgoing: number;
 
@@ -103,6 +104,11 @@ export default function DashboardPage() {
         0
       ),
 
+      beforeOqc: filtered.reduce(
+        (a, b) => a + (b.beforeOQC || 0),
+        0
+      ),
+
       afterOqc: filtered.reduce(
         (a, b) => a + (b.totalAfterOQC || 0),
         0
@@ -163,44 +169,51 @@ export default function DashboardPage() {
 
       {/* STAT CARDS */}
 
-      <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-7 gap-4">
 
-        <Card className="p-4 border shadow-sm hover:shadow transition">
+        <Card className="p-4 border shadow-sm">
           <p className="text-xs text-slate-500">Total SKU</p>
           <h2 className="text-2xl font-bold">{stats.sku}</h2>
         </Card>
 
-        <Card className="p-4 border shadow-sm hover:shadow transition">
+        <Card className="p-4 border shadow-sm">
           <p className="text-xs text-slate-500">Incoming</p>
-          <h2 className="text-2xl font-bold text-green-600 tabular-nums">
+          <h2 className="text-2xl font-bold text-green-600">
             {format(stats.incoming)}
           </h2>
         </Card>
 
-        <Card className="p-4 border shadow-sm hover:shadow transition">
+        <Card className="p-4 border shadow-sm">
+          <p className="text-xs text-slate-500">Before OQC</p>
+          <h2 className="text-2xl font-bold text-orange-600">
+            {format(stats.beforeOqc)}
+          </h2>
+        </Card>
+
+        <Card className="p-4 border shadow-sm">
           <p className="text-xs text-slate-500">After OQC</p>
-          <h2 className="text-2xl font-bold text-yellow-600 tabular-nums">
+          <h2 className="text-2xl font-bold text-yellow-600">
             {format(stats.afterOqc)}
           </h2>
         </Card>
 
-        <Card className="p-4 border shadow-sm hover:shadow transition">
+        <Card className="p-4 border shadow-sm">
           <p className="text-xs text-slate-500">Deflashing</p>
-          <h2 className="text-2xl font-bold text-blue-600 tabular-nums">
+          <h2 className="text-2xl font-bold text-blue-600">
             {format(stats.deflashing)}
           </h2>
         </Card>
 
-        <Card className="p-4 border shadow-sm hover:shadow transition">
+        <Card className="p-4 border shadow-sm">
           <p className="text-xs text-slate-500">Outgoing</p>
-          <h2 className="text-2xl font-bold text-red-600 tabular-nums">
+          <h2 className="text-2xl font-bold text-red-600">
             {format(stats.outgoing)}
           </h2>
         </Card>
 
-        <Card className="p-4 border shadow-sm hover:shadow transition">
+        <Card className="p-4 border shadow-sm">
           <p className="text-xs text-slate-500">Warehouse Stock</p>
-          <h2 className="text-2xl font-bold text-purple-600 tabular-nums">
+          <h2 className="text-2xl font-bold text-purple-600">
             {format(stats.warehouseStock)}
           </h2>
         </Card>
@@ -209,7 +222,7 @@ export default function DashboardPage() {
 
       {/* FILTER */}
 
-      <Card className="p-4 flex flex-wrap gap-4 items-center border shadow-sm">
+      <Card className="p-4 flex flex-wrap gap-4 items-center border">
 
         <Input
           placeholder="Search code / part / product"
@@ -250,6 +263,7 @@ export default function DashboardPage() {
                   'LOC',
                   'INITIAL',
                   'IN',
+                  'BEFORE OQC',
                   'AFTER OQC',
                   'DEFLASH',
                   'OUT',
@@ -275,7 +289,7 @@ export default function DashboardPage() {
               {loading ? (
 
                 <tr>
-                  <td colSpan={12} className="py-10 text-center text-slate-500">
+                  <td colSpan={13} className="py-10 text-center text-slate-500">
                     Loading dashboard...
                   </td>
                 </tr>
@@ -283,7 +297,7 @@ export default function DashboardPage() {
               ) : filtered.length === 0 ? (
 
                 <tr>
-                  <td colSpan={12} className="py-10 text-center text-slate-400">
+                  <td colSpan={13} className="py-10 text-center text-slate-400">
                     No data found
                   </td>
                 </tr>
@@ -294,7 +308,7 @@ export default function DashboardPage() {
 
                   <tr
                     key={r.computerCode}
-                    className={`border-b hover:bg-blue-50 transition ${
+                    className={`border-b hover:bg-blue-50 ${
                       i % 2 ? 'bg-slate-50/60' : ''
                     }`}
                   >
@@ -303,28 +317,20 @@ export default function DashboardPage() {
                       {r.computerCode}
                     </td>
 
-                    <td className="px-3 py-2">
-                      {r.partNo}
-                    </td>
+                    <td className="px-3 py-2">{r.partNo}</td>
+
+                    <td className="px-3 py-2">{r.productName}</td>
 
                     <td className="px-3 py-2">
-                      {r.productName}
-                    </td>
-
-                    <td className="px-3 py-2">
-
                       <span className="px-2 py-[2px] rounded bg-blue-100 text-blue-700 text-[10px] font-semibold">
                         {r.productionType}
                       </span>
-
                     </td>
 
                     <td className="px-3 py-2">
-
                       <span className="px-2 py-[2px] rounded bg-slate-200 text-slate-700 text-[10px] font-semibold">
                         {r.location || '-'}
                       </span>
-
                     </td>
 
                     <td className="px-3 py-2 tabular-nums">
@@ -333,6 +339,10 @@ export default function DashboardPage() {
 
                     <td className="px-3 py-2 tabular-nums text-green-700">
                       {format(r.totalIncoming)}
+                    </td>
+
+                    <td className="px-3 py-2 tabular-nums bg-orange-100 text-orange-700">
+                      {format(r.beforeOQC)}
                     </td>
 
                     <td className="px-3 py-2 tabular-nums bg-yellow-100">

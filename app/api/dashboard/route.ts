@@ -34,21 +34,29 @@ export async function GET(request: NextRequest) {
       /* ================= INCOMING ================= */
 
       const totalIncoming = product.incomingTransactions.reduce(
-        (sum, t) => sum + t.incomingQty,
+        (sum, t) => sum + (t.incomingQty ?? 0),
         0
       )
 
-      /* ================= AFTER OQC (OK + SPARE) ================= */
+      /* ================= BEFORE OQC ================= */
+      /* qty yang dikirim dari incoming ke QC queue */
+
+      const beforeOQC = product.incomingTransactions.reduce(
+        (sum, t) => sum + ((t.incomingQty ?? 0) - (t.remainingQty ?? 0)),
+        0
+      )
+
+      /* ================= AFTER OQC ================= */
 
       const totalAfterOQC = product.afterOQCTransactions.reduce(
-        (sum, t) => sum + t.afterQty + (t.spareQty || 0),
+        (sum, t) => sum + (t.afterQty ?? 0) + (t.spareQty ?? 0),
         0
       )
 
       /* ================= OUTGOING ================= */
 
       const totalOutgoing = product.outgoingTransactions.reduce(
-        (sum, o) => sum + o.qtyOut,
+        (sum, o) => sum + (o.qtyOut ?? 0),
         0
       )
 
@@ -59,12 +67,12 @@ export async function GET(request: NextRequest) {
       )
 
       const totalDeflashingQty = productLogs.reduce(
-        (sum, log) => sum + log.qtyOut,
+        (sum, log) => sum + (log.qtyOut ?? 0),
         0
       )
 
       const totalDeflashingNG = productLogs.reduce(
-        (sum, log) => sum + log.ngQty,
+        (sum, log) => sum + (log.ngQty ?? 0),
         0
       )
 
@@ -94,6 +102,7 @@ export async function GET(request: NextRequest) {
         initialStock: product.initialStock,
 
         totalIncoming,
+        beforeOQC,
         totalAfterOQC,
         totalOutgoing,
 
