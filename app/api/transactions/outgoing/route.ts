@@ -15,6 +15,7 @@ export async function POST(req: NextRequest) {
       productName,
       qtyOut,
       responsiblePerson,
+      remark,
       date
     } = body
 
@@ -39,6 +40,7 @@ export async function POST(req: NextRequest) {
         productName: productName?.trim() || '',
         qtyOut: Number(qtyOut),
         responsiblePerson: responsiblePerson.trim(),
+        remark: remark?.trim() || null,
         date: date ? new Date(date) : new Date()
       }
 
@@ -71,7 +73,7 @@ export async function GET() {
     const data = await prisma.outgoingTransaction.findMany({
 
       orderBy: {
-        createdAt: 'asc' // transaksi pertama dibuat → paling atas
+        createdAt: 'asc'
       }
 
     })
