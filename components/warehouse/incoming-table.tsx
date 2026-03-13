@@ -58,18 +58,41 @@ export function IncomingTable({
     setEditingId(null)
   }
 
-  const saveEdit = (tx: Transaction) => {
+  const saveEdit = async (tx: Transaction) => {
 
-    console.log('Update Incoming', {
-      id: tx.id,
-      newQty: editQty,
-      newBatch: editBatch
+  try {
+
+    const res = await fetch(`/api/transactions/incoming/${tx.id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        incomingQty: editQty,
+        batch: editBatch
+      })
     })
 
-    // nanti disini fetch API update
+    const result = await res.json()
+
+    if (!res.ok) {
+      alert(result.message || 'Failed to update')
+      return
+    }
 
     setEditingId(null)
+
+    // refresh page supaya data terbaru muncul
+    location.reload()
+
+  } catch (error) {
+
+    console.error('Update failed', error)
+    alert('Server error')
+
   }
+
+}
 
   const filtered = [...transactions]
     .sort((a, b) => a.id.localeCompare(b.id))
