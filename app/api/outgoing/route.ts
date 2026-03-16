@@ -7,41 +7,55 @@ export async function POST(req: Request) {
 
     const body = await req.json()
 
-    const { 
-      computerCode, 
-      partNo, 
-      productName, 
-      qtyOut, 
+    const {
+      computerCode,
+      partNo,
+      productName,
+      qtyOut,
       responsiblePerson,
       remark
     } = body
 
-    if (!computerCode || !qtyOut || !responsiblePerson) {
+    /* VALIDATION */
+
+    if (!computerCode || !responsiblePerson) {
       return NextResponse.json(
-        { error: 'Missing data' },
+        { error: 'Computer code and responsible person are required' },
         { status: 400 }
       )
     }
 
-    await prisma.outgoingTransaction.create({
+    if (!qtyOut || Number(qtyOut) <= 0) {
+      return NextResponse.json(
+        { error: 'Quantity must be greater than 0' },
+        { status: 400 }
+      )
+    }
+
+    /* CREATE TRANSACTION */
+
+    const transaction = await prisma.outgoingTransaction.create({
       data: {
-        computerCode,
-        partNo,
-        productName,
+        computerCode: computerCode.trim(),
+        partNo: partNo?.trim() || null,
+        productName: productName?.trim() || null,
         qtyOut: Number(qtyOut),
-        responsiblePerson,
-        remark
+        responsiblePerson: responsiblePerson.trim(),
+        remark: remark?.trim() || null
       }
     })
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({
+      success: true,
+      data: transaction
+    })
 
-  } catch (err) {
+  } catch (error) {
 
-    console.error('[OUTGOING ERROR]', err)
+    console.error('[OUTGOING TRANSACTION ERROR]', error)
 
     return NextResponse.json(
-      { error: 'Server error' },
+      { error: 'Internal server error' },
       { status: 500 }
     )
 
