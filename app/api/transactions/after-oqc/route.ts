@@ -4,35 +4,23 @@ import { prisma } from '@/lib/prisma'
 /* ================= GET : QC QUEUE ================= */
 
 export async function GET() {
-
   try {
-
     const data = await prisma.afterOQCTransaction.findMany({
-      where: {
-        status: 'PENDING'
-      },
-      orderBy: {
-        createdAt: 'asc'
-      }
+      where: { status: 'PENDING' },
+      orderBy: { createdAt: 'asc' }
     })
 
     return NextResponse.json(data)
-
   } catch {
-
     return NextResponse.json([], { status: 500 })
-
   }
-
 }
 
 
 /* ================= POST : PROCESS QC ================= */
 
 export async function POST(req: NextRequest) {
-
   try {
-
     const body = await req.json()
 
     const {
@@ -48,9 +36,9 @@ export async function POST(req: NextRequest) {
       responsiblePerson
     } = body
 
-    const addAfter = Math.max(Number(afterQty) || 0, 0)
-    const addNg = Math.max(Number(ngQty) || 0, 0)
-    const addSpare = Math.max(Number(spareQty) || 0, 0)
+    const finalAfter = Math.max(Number(afterQty) || 0, 0)
+    const finalNg = Math.max(Number(ngQty) || 0, 0)
+    const finalSpare = Math.max(Number(spareQty) || 0, 0)
 
     let transactionId = id
 
@@ -59,24 +47,25 @@ export async function POST(req: NextRequest) {
 
     if (!id) {
 
+      const totalProcessed = finalAfter + finalNg
+      const remaining = (Number(beforeQty) || 0) - totalProcessed
+
       const created = await prisma.afterOQCTransaction.create({
         data: {
-
           computerCode: String(computerCode),
           partNo: String(partNo),
           productName: String(productName),
-
           batch: batch ? String(batch).trim() : null,
 
           beforeQty: Number(beforeQty) || 0,
 
-          afterQty: addAfter,
-          ngQty: addNg,
-          spareQty: addSpare,
+          afterQty: finalAfter,
+          ngQty: finalNg,
+          spareQty: finalSpare,
 
           responsiblePerson: responsiblePerson || null,
 
-          status: 'DONE',
+          status: remaining <= 0 ? 'DONE' : 'PENDING',
 
           incomingId: null
         }
@@ -84,23 +73,21 @@ export async function POST(req: NextRequest) {
 
       transactionId = created.id
 
-
       await prisma.afterOQCLog.create({
         data: {
           afterOQCId: transactionId,
-          okQty: addAfter,
-          ngQty: addNg,
-          spareQty: addSpare,
+          okQty: finalAfter,
+          ngQty: finalNg,
+          spareQty: finalSpare,
           responsiblePerson
         }
       })
 
-
       return NextResponse.json({
         success: true,
-        manual: true
+        manual: true,
+        remaining
       })
-
     }
 
 
@@ -111,39 +98,32 @@ export async function POST(req: NextRequest) {
     })
 
     if (!existing) {
-
       return NextResponse.json(
         { message: 'Transaction not found' },
         { status: 404 }
       )
-
     }
 
 
-    /* ================= SAVE QC LOG ================= */
+    /* ================= CALCULATE (FINAL MODE) ================= */
+
+    const totalProcessed = finalAfter + finalNg
+    const remaining = existing.beforeQty - totalProcessed
+
+    const status = remaining <= 0 ? 'DONE' : 'PENDING'
+
+
+    /* ================= SAVE LOG ================= */
 
     await prisma.afterOQCLog.create({
       data: {
         afterOQCId: id,
-        okQty: addAfter,
-        ngQty: addNg,
-        spareQty: addSpare,
+        okQty: finalAfter,
+        ngQty: finalNg,
+        spareQty: finalSpare,
         responsiblePerson
       }
     })
-
-
-    /* ================= CALCULATE ================= */
-
-    const processedNow = addAfter + addNg
-
-    const totalAfter = existing.afterQty + addAfter
-    const totalNg = existing.ngQty + addNg
-    const totalSpare = existing.spareQty + addSpare
-
-    const remaining = existing.beforeQty - processedNow
-
-    const status = remaining <= 0 ? 'DONE' : 'PENDING'
 
 
     /* ================= UPDATE TRANSACTION ================= */
@@ -151,17 +131,13 @@ export async function POST(req: NextRequest) {
     await prisma.afterOQCTransaction.update({
       where: { id },
       data: {
-
-        beforeQty: remaining > 0 ? remaining : 0,
-
-        afterQty: totalAfter,
-        ngQty: totalNg,
-        spareQty: totalSpare,
+        // ❗ beforeQty tetap sebagai qty awal (JANGAN diubah-ubah lagi)
+        afterQty: finalAfter,
+        ngQty: finalNg,
+        spareQty: finalSpare,
 
         responsiblePerson,
-
         status
-
       }
     })
 
@@ -180,7 +156,5 @@ export async function POST(req: NextRequest) {
       { message: 'Internal server error' },
       { status: 500 }
     )
-
   }
-
 }
