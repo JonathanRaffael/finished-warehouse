@@ -31,24 +31,33 @@ export async function GET(request: NextRequest) {
 
     const dashboardData = products.map(product => {
 
-      /* ================= INCOMING ================= */
+      /* ================= INCOMING (SISA REAL) ================= */
 
       const totalIncoming = product.incomingTransactions.reduce(
-        (sum, t) => sum + (t.incomingQty ?? 0),
+        (sum, t) => sum + (t.remainingQty ?? 0),
         0
       )
 
-      /* ================= BEFORE OQC ================= */
-      /* qty yang dikirim dari incoming ke QC queue */
+      /* ================= GROUP OQC ================= */
 
-      const beforeOQC = product.incomingTransactions.reduce(
-        (sum, t) => sum + ((t.incomingQty ?? 0) - (t.remainingQty ?? 0)),
+      const pendingOQC = product.afterOQCTransactions.filter(
+        t => t.status === 'PENDING'
+      )
+
+      const doneOQC = product.afterOQCTransactions.filter(
+        t => t.status === 'DONE'
+      )
+
+      /* ================= BEFORE OQC ================= */
+
+      const beforeOQC = pendingOQC.reduce(
+        (sum, t) => sum + (t.beforeQty ?? 0),
         0
       )
 
       /* ================= AFTER OQC ================= */
 
-      const totalAfterOQC = product.afterOQCTransactions.reduce(
+      const totalAfterOQC = doneOQC.reduce(
         (sum, t) => sum + (t.afterQty ?? 0) + (t.spareQty ?? 0),
         0
       )
@@ -77,20 +86,23 @@ export async function GET(request: NextRequest) {
       )
 
       /* ================= FINAL STOCK ================= */
+      // sesuai rumus:
+      // initial + incoming + before + after - outgoing
 
       const finalStock =
-        product.initialStock +
-        totalIncoming +
-        totalAfterOQC +
-        totalDeflashingQty -
-        totalOutgoing
+        (product.initialStock ?? 0) +
+        (totalIncoming ?? 0) +
+        (beforeOQC ?? 0) +
+        (totalAfterOQC ?? 0) -
+        (totalOutgoing ?? 0)
 
       /* ================= FINAL STOCK WAREHOUSE ================= */
+      // initial + after - outgoing
 
       const finalStockWarehouse =
-        product.initialStock +
-        totalAfterOQC -
-        totalOutgoing
+        (product.initialStock ?? 0) +
+        (totalAfterOQC ?? 0) -
+        (totalOutgoing ?? 0)
 
       return {
         computerCode: product.computerCode,
@@ -99,7 +111,7 @@ export async function GET(request: NextRequest) {
         productionType: product.productionType,
         location: product.location,
 
-        initialStock: product.initialStock,
+        initialStock: product.initialStock ?? 0,
 
         totalIncoming,
         beforeOQC,

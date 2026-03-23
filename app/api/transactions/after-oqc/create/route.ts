@@ -12,6 +12,8 @@ export async function POST(req: NextRequest) {
 
     const result = await prisma.$transaction(async (tx) => {
 
+      /* ================= GET INCOMING ================= */
+
       const incoming = await tx.incomingTransaction.findUnique({
         where: { id: incomingId }
       })
@@ -20,22 +22,28 @@ export async function POST(req: NextRequest) {
         throw new Error('Incoming not found')
       }
 
-      if (!incoming.remainingQty || incoming.remainingQty < qty) {
-        throw new Error('Qty exceeds remaining')
+      if (!incoming.remainingQty || incoming.remainingQty <= 0) {
+        throw new Error('No remaining stock')
       }
 
-      // 🔒 ANTI DOUBLE CLICK
-      const existingQC = await tx.afterOQCTransaction.findFirst({
+      if (qty > incoming.remainingQty) {
+        throw new Error('Qty melebihi remaining incoming')
+      }
+
+      /* ================= 🔒 ANTI DOUBLE ================= */
+
+      const existingPending = await tx.afterOQCTransaction.findFirst({
         where: {
           incomingId,
-          beforeQty: qty,
           status: 'PENDING'
         }
       })
 
-      if (existingQC) {
-        throw new Error('QC already exists')
+      if (existingPending) {
+        throw new Error('Masih ada QC yang belum selesai')
       }
+
+      /* ================= CREATE QC ================= */
 
       const afterOQC = await tx.afterOQCTransaction.create({
         data: {
@@ -57,6 +65,8 @@ export async function POST(req: NextRequest) {
         }
       })
 
+      /* ================= LOG ================= */
+
       await tx.afterOQCLog.create({
         data: {
           afterOQCId: afterOQC.id,
@@ -66,6 +76,8 @@ export async function POST(req: NextRequest) {
           responsiblePerson
         }
       })
+
+      /* ================= UPDATE INCOMING ================= */
 
       const newRemaining = incoming.remainingQty - qty
 

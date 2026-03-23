@@ -67,6 +67,17 @@ export default function DashboardPage() {
 
   };
 
+  /* ================= UTILS ================= */
+
+  const safe = (n:number)=> Math.max(0, n)
+  const format = (n:number)=> n.toLocaleString()
+
+  const stockColor = (n:number)=>{
+    if(n < 0) return 'text-red-700 bg-red-100'
+    if(n < 50) return 'text-orange-700 bg-orange-100'
+    return 'text-green-700 bg-green-100'
+  }
+
   /* ================= FILTER + SORT ================= */
 
   const filtered = useMemo(() => {
@@ -100,48 +111,38 @@ export default function DashboardPage() {
       sku: filtered.length,
 
       incoming: filtered.reduce(
-        (a, b) => a + (b.totalIncoming || 0),
+        (a, b) => a + safe(b.totalIncoming),
         0
       ),
 
       beforeOqc: filtered.reduce(
-        (a, b) => a + (b.beforeOQC || 0),
+        (a, b) => a + safe(b.beforeOQC),
         0
       ),
 
       afterOqc: filtered.reduce(
-        (a, b) => a + (b.totalAfterOQC || 0),
+        (a, b) => a + safe(b.totalAfterOQC),
         0
       ),
 
       deflashing: filtered.reduce(
-        (a, b) => a + (b.totalDeflashingQty || 0),
+        (a, b) => a + safe(b.totalDeflashingQty),
         0
       ),
 
       outgoing: filtered.reduce(
-        (a, b) => a + (b.totalOutgoing || 0),
+        (a, b) => a + safe(b.totalOutgoing),
         0
       ),
 
       warehouseStock: filtered.reduce(
-        (a, b) => a + (b.finalStockWarehouse || 0),
+        (a, b) => a + safe(b.finalStockWarehouse),
         0
       )
 
     };
 
   }, [filtered]);
-
-  const format = (n:number)=> n.toLocaleString()
-
-  const stockColor = (n:number)=>{
-
-    if(n < 0) return 'text-red-700 bg-red-100'
-    if(n < 50) return 'text-orange-700 bg-orange-100'
-    return 'text-green-700 bg-green-100'
-
-  }
 
   return (
 
@@ -216,6 +217,9 @@ export default function DashboardPage() {
           <h2 className="text-2xl font-bold text-purple-600">
             {format(stats.warehouseStock)}
           </h2>
+          <p className="text-[10px] text-slate-500 mt-1">
+            ready stock (after QC)
+          </p>
         </Card>
 
       </div>
@@ -254,32 +258,18 @@ export default function DashboardPage() {
             <thead className="sticky top-0 bg-slate-100 border-b">
 
               <tr>
-
                 {[
-                  'CODE',
-                  'PART',
-                  'PRODUCT',
-                  'PROD',
-                  'LOC',
-                  'INITIAL',
-                  'IN',
-                  'BEFORE OQC',
-                  'AFTER OQC',
-                  'DEFLASH',
-                  'OUT',
-                  'FINAL',
-                  'WH STOCK'
+                  'CODE','PART','PRODUCT','PROD','LOC',
+                  'INITIAL','IN','BEFORE OQC','AFTER OQC',
+                  'DEFLASH','OUT','FINAL','WH STOCK'
                 ].map((h)=>(
-
                   <th
                     key={h}
                     className="px-3 py-2 text-left uppercase tracking-wide text-[11px] text-slate-600"
                   >
                     {h}
                   </th>
-
                 ))}
-
               </tr>
 
             </thead>
@@ -304,70 +294,83 @@ export default function DashboardPage() {
 
               ) : (
 
-                filtered.map((r,i)=>(
+                filtered.map((r,i)=>{
 
-                  <tr
-                    key={r.computerCode}
-                    className={`border-b hover:bg-blue-50 ${
-                      i % 2 ? 'bg-slate-50/60' : ''
-                    }`}
-                  >
+                  const isHeavyQC = safe(r.beforeOQC) > safe(r.totalAfterOQC)
 
-                    <td className="px-3 py-2 font-mono text-blue-700">
-                      {r.computerCode}
-                    </td>
+                  return (
 
-                    <td className="px-3 py-2">{r.partNo}</td>
+                    <tr
+                      key={r.computerCode}
+                      className={`border-b hover:bg-blue-50 ${
+                        i % 2 ? 'bg-slate-50/60' : ''
+                      }`}
+                    >
 
-                    <td className="px-3 py-2">{r.productName}</td>
+                      <td className="px-3 py-2 font-mono text-blue-700">
+                        {r.computerCode}
+                      </td>
 
-                    <td className="px-3 py-2">
-                      <span className="px-2 py-[2px] rounded bg-blue-100 text-blue-700 text-[10px] font-semibold">
-                        {r.productionType}
-                      </span>
-                    </td>
+                      <td className="px-3 py-2">{r.partNo}</td>
 
-                    <td className="px-3 py-2">
-                      <span className="px-2 py-[2px] rounded bg-slate-200 text-slate-700 text-[10px] font-semibold">
-                        {r.location || '-'}
-                      </span>
-                    </td>
+                      <td className="px-3 py-2">{r.productName}</td>
 
-                    <td className="px-3 py-2 tabular-nums">
-                      {format(r.initialStock)}
-                    </td>
+                      <td className="px-3 py-2">
+                        <span className="px-2 py-[2px] rounded bg-blue-100 text-blue-700 text-[10px] font-semibold">
+                          {r.productionType}
+                        </span>
+                      </td>
 
-                    <td className="px-3 py-2 tabular-nums text-green-700">
-                      {format(r.totalIncoming)}
-                    </td>
+                      <td className="px-3 py-2">
+                        <span className="px-2 py-[2px] rounded bg-slate-200 text-slate-700 text-[10px] font-semibold">
+                          {r.location || '-'}
+                        </span>
+                      </td>
 
-                    <td className="px-3 py-2 tabular-nums bg-orange-100 text-orange-700">
-                      {format(r.beforeOQC)}
-                    </td>
+                      <td className="px-3 py-2 tabular-nums">
+                        {format(r.initialStock)}
+                      </td>
 
-                    <td className="px-3 py-2 tabular-nums bg-yellow-100">
-                      {format(r.totalAfterOQC)}
-                    </td>
+                      <td className="px-3 py-2 tabular-nums text-green-700">
+                        {format(safe(r.totalIncoming))}
+                      </td>
 
-                    <td className="px-3 py-2 tabular-nums bg-blue-100 text-blue-700">
-                      {format(r.totalDeflashingQty)}
-                    </td>
+                      <td className={`px-3 py-2 tabular-nums ${
+                        isHeavyQC
+                          ? 'bg-red-100 text-red-700'
+                          : 'bg-orange-100 text-orange-700'
+                      }`}>
+                        {format(safe(r.beforeOQC))}
+                      </td>
 
-                    <td className="px-3 py-2 tabular-nums text-red-600">
-                      {format(r.totalOutgoing)}
-                    </td>
+                      <td className="px-3 py-2 tabular-nums bg-yellow-100">
+                        {format(safe(r.totalAfterOQC))}
+                      </td>
 
-                    <td className="px-3 py-2 tabular-nums font-bold bg-green-100">
-                      {format(r.finalStock)}
-                    </td>
+                      <td className="px-3 py-2 tabular-nums bg-blue-100 text-blue-700">
+                        {format(safe(r.totalDeflashingQty))}
+                      </td>
 
-                    <td className={`px-3 py-2 tabular-nums font-bold ${stockColor(r.finalStockWarehouse)}`}>
-                      {format(r.finalStockWarehouse)}
-                    </td>
+                      <td className="px-3 py-2 tabular-nums text-red-600">
+                        {format(safe(r.totalOutgoing))}
+                      </td>
 
-                  </tr>
+                      <td className="px-3 py-2 tabular-nums font-bold bg-green-100">
+                        {format(safe(r.finalStock))}
+                        <p className="text-[10px] text-slate-500">
+                          incl. QC + Incoming
+                        </p>
+                      </td>
 
-                ))
+                      <td className={`px-3 py-2 tabular-nums font-bold ${stockColor(r.finalStockWarehouse)}`}>
+                        {format(safe(r.finalStockWarehouse))}
+                      </td>
+
+                    </tr>
+
+                  )
+
+                })
 
               )}
 
