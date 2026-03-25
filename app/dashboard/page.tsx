@@ -173,7 +173,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-2 lg:grid-cols-7 gap-4">
 
         <Card className="p-4 border shadow-sm">
-          <p className="text-xs text-slate-500">Total SKU</p>
+          <p className="text-xs text-slate-500">Total Product</p>
           <h2 className="text-2xl font-bold">{stats.sku}</h2>
         </Card>
 

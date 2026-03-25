@@ -112,11 +112,11 @@ export function AfterOQCForm({ onSuccess, selectedQueue }: AfterOQCFormProps) {
 
   /* ================= CALCULATION ================= */
 
-  const processTotal = ok + ng
+  const processTotal = ok
   const finalStock = ok + spare
 
-  const progress =
-    before > 0 ? ((ok + ng) / before) * 100 : 0
+  const progress =  
+    before > 0 ? (ok / before) * 100 : 0
 
   const isInvalid =
     !computerCode ||
@@ -297,7 +297,7 @@ export function AfterOQCForm({ onSuccess, selectedQueue }: AfterOQCFormProps) {
       <div className="space-y-2">
 
         <div className="flex justify-between text-xs text-slate-500">
-          <span>Process Check (OK + NG)</span>
+          <span>Process (OK Only)</span>
           <span>{processTotal} / {before}</span>
         </div>
 

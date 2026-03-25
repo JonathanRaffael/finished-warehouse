@@ -47,8 +47,8 @@ export async function POST(req: NextRequest) {
 
     if (!id) {
 
-      const totalProcessed = finalAfter + finalNg
-      const remaining = (Number(beforeQty) || 0) - totalProcessed
+      const remaining = (Number(beforeQty) || 0) - finalAfter
+      const safeRemaining = Math.max(remaining, 0)
 
       const created = await prisma.afterOQCTransaction.create({
         data: {
@@ -57,15 +57,17 @@ export async function POST(req: NextRequest) {
           productName: String(productName),
           batch: batch ? String(batch).trim() : null,
 
-          beforeQty: Number(beforeQty) || 0,
+          // 🔥 beforeQty = remaining
+          beforeQty: safeRemaining,
 
+          // 🔥 langsung set (karena baru create)
           afterQty: finalAfter,
           ngQty: finalNg,
           spareQty: finalSpare,
 
           responsiblePerson: responsiblePerson || null,
 
-          status: remaining <= 0 ? 'DONE' : 'PENDING',
+          status: safeRemaining <= 0 ? 'DONE' : 'PENDING',
 
           incomingId: null
         }
@@ -86,7 +88,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         success: true,
         manual: true,
-        remaining
+        remaining: safeRemaining
       })
     }
 
@@ -104,13 +106,20 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    // 🔥 VALIDASI: tidak boleh melebihi remaining
+    if (finalAfter > existing.beforeQty) {
+      return NextResponse.json(
+        { message: 'OK qty exceeds remaining' },
+        { status: 400 }
+      )
+    }
 
-    /* ================= CALCULATE (FINAL MODE) ================= */
+    /* ================= CALCULATE ================= */
 
-    const totalProcessed = finalAfter + finalNg
-    const remaining = existing.beforeQty - totalProcessed
+    const remaining = existing.beforeQty - finalAfter
+    const safeRemaining = Math.max(remaining, 0)
 
-    const status = remaining <= 0 ? 'DONE' : 'PENDING'
+    const status = safeRemaining <= 0 ? 'DONE' : 'PENDING'
 
 
     /* ================= SAVE LOG ================= */
@@ -131,10 +140,19 @@ export async function POST(req: NextRequest) {
     await prisma.afterOQCTransaction.update({
       where: { id },
       data: {
-        // ❗ beforeQty tetap sebagai qty awal (JANGAN diubah-ubah lagi)
-        afterQty: finalAfter,
-        ngQty: finalNg,
-        spareQty: finalSpare,
+        // 🔥 UPDATE REMAINING
+        beforeQty: safeRemaining,
+
+        // 🔥 AKUMULASI (INI FIX UTAMA)
+        afterQty: {
+          increment: finalAfter
+        },
+        ngQty: {
+          increment: finalNg
+        },
+        spareQty: {
+          increment: finalSpare
+        },
 
         responsiblePerson,
         status
@@ -144,7 +162,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      remaining,
+      remaining: safeRemaining,
       status
     })
 

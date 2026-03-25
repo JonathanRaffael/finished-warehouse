@@ -21,16 +21,36 @@ import { cn } from '@/lib/utils';
 
 const menuByRole = {
   ADMIN: [
-    { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-    { label: 'Incoming', href: '/dashboard/incoming', icon: Inbox },
-    { label: 'After OQC', href: '/dashboard/after-oqc', icon: CheckCircle2 },
-    { label: 'Deflashing', href: '/dashboard/deflashing', icon: Wrench },
-    { label: 'Outgoing', href: '/dashboard/outgoing', icon: Send },
-    { label: 'Master Data', href: '/dashboard/master-data', icon: Database },
+    {
+      title: 'MAIN',
+      items: [
+        { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+      ],
+    },
+    {
+      title: 'OPERATIONS',
+      items: [
+        { label: 'Incoming', href: '/dashboard/incoming', icon: Inbox },
+        { label: 'After OQC', href: '/dashboard/after-oqc', icon: CheckCircle2 },
+        { label: 'Deflashing', href: '/dashboard/deflashing', icon: Wrench },
+        { label: 'Outgoing', href: '/dashboard/outgoing', icon: Send },
+      ],
+    },
+    {
+      title: 'SYSTEM',
+      items: [
+        { label: 'Master Data', href: '/dashboard/master-data', icon: Database },
+      ],
+    },
   ],
 
   DEFLASHING: [
-    { label: 'Deflashing', href: '/dashboard/deflashing', icon: Wrench },
+    {
+      title: 'OPERATIONS',
+      items: [
+        { label: 'Deflashing', href: '/dashboard/deflashing', icon: Wrench },
+      ],
+    },
   ],
 };
 
@@ -44,7 +64,7 @@ export function Sidebar() {
   const [role, setRole] = useState<string | null>(null);
   const [roleLoaded, setRoleLoaded] = useState(false);
 
-  /* ================= GET ROLE FROM COOKIE ================= */
+  /* ================= GET ROLE ================= */
 
   useEffect(() => {
     const roleCookie = document.cookie
@@ -52,7 +72,6 @@ export function Sidebar() {
       .find(row => row.startsWith('role='))
       ?.split('=')[1];
 
-    // normalize role
     const normalizedRole = roleCookie?.toUpperCase() ?? 'ADMIN';
 
     setRole(normalizedRole);
@@ -62,15 +81,21 @@ export function Sidebar() {
   /* ================= AUTO COLLAPSE ================= */
 
   useEffect(() => {
+    const saved = localStorage.getItem('sidebar-collapsed');
+    if (saved) setCollapsed(saved === 'true');
+
     const handleResize = () => {
       if (window.innerWidth < 1024) setCollapsed(true);
-      else setCollapsed(false);
     };
 
     handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  useEffect(() => {
+    localStorage.setItem('sidebar-collapsed', String(collapsed));
+  }, [collapsed]);
 
   /* ================= LOGOUT ================= */
 
@@ -80,11 +105,7 @@ export function Sidebar() {
     router.refresh();
   };
 
-  /* ================= WAIT ROLE ================= */
-
   if (!roleLoaded) return null;
-
-  /* ================= CURRENT MENU ================= */
 
   const menus =
     menuByRole[role as keyof typeof menuByRole] ??
@@ -92,7 +113,7 @@ export function Sidebar() {
 
   return (
     <>
-      {/* Mobile toggle */}
+      {/* MOBILE BUTTON */}
       <button
         onClick={() => setMobileOpen(true)}
         className="lg:hidden fixed top-4 left-4 z-50 rounded-md bg-white p-2 shadow"
@@ -100,7 +121,7 @@ export function Sidebar() {
         <Menu className="h-5 w-5" />
       </button>
 
-      {/* Mobile overlay */}
+      {/* OVERLAY */}
       {mobileOpen && (
         <div
           onClick={() => setMobileOpen(false)}
@@ -115,82 +136,101 @@ export function Sidebar() {
           mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         )}
       >
-        {/* HEADER */}
-        <div className="h-16 flex items-center justify-between px-4 border-b bg-white">
-          <div className="flex items-center gap-3 overflow-hidden">
-            <div className="h-9 w-9 shrink-0 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white font-bold shadow">
-              HT
-            </div>
+        {/* ================= HEADER ================= */}
+        <div className="relative flex items-center justify-between px-4 py-3 border-b bg-gradient-to-r from-white to-slate-50">
+  <div className="flex items-center gap-3">
+    <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white font-bold shadow">
+      HT
+    </div>
 
-            {!collapsed && (
-              <div className="truncate">
-                <p className="text-sm font-semibold text-slate-900">
-                  PT Hang Tong Manufactory
+    {!collapsed && (
+      <div className="flex flex-col leading-tight">
+        <p className="text-sm font-semibold text-slate-900">
+          PT Hang Tong
+        </p>
+        <p className="text-xs text-slate-500">
+          Warehouse System
+        </p>
+      </div>
+    )}
+  </div>
+
+  {/* FLOATING COLLAPSE BUTTON */}
+  <button
+    onClick={() => setCollapsed(v => !v)}
+    className={cn(
+      'hidden lg:flex absolute -right-3 top-6 z-50 h-6 w-6 items-center justify-center rounded-full border bg-white shadow-md hover:bg-slate-100 transition'
+    )}
+  >
+    {collapsed ? (
+      <ChevronRight className="h-3 w-3" />
+    ) : (
+      <ChevronLeft className="h-3 w-3" />
+    )}
+  </button>
+</div>
+
+        {/* ================= NAV ================= */}
+        <nav className="flex-1 px-2 py-4 space-y-4">
+          {menus.map(section => (
+            <div key={section.title}>
+              {!collapsed && (
+                <p className="px-3 mb-2 text-xs font-semibold text-slate-400 uppercase tracking-wide">
+                  {section.title}
                 </p>
-                <p className="text-xs text-slate-500">
-                  Warehouse Management
-                </p>
+              )}
+
+              <div className="space-y-1">
+                {section.items.map(item => {
+                  const isActive = pathname === item.href;
+                  const Icon = item.icon;
+
+                  return (
+                    <Link key={item.href} href={item.href}>
+                      <div
+                        onClick={() => setMobileOpen(false)}
+                        className={cn(
+                          'group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all duration-200 ease-in-out select-none',
+                          isActive
+                            ? 'bg-blue-100 text-blue-800 font-semibold border-l-4 border-blue-600'
+                            : 'text-slate-600 hover:bg-slate-100 hover:translate-x-[2px]'
+                        )}
+                      >
+                        <Icon
+                          className={cn(
+                            'h-5 w-5 shrink-0',
+                            isActive
+                              ? 'text-blue-600'
+                              : 'text-slate-400 group-hover:text-slate-600'
+                          )}
+                        />
+
+                        {!collapsed && (
+                          <span className="whitespace-nowrap">
+                            {item.label}
+                          </span>
+                        )}
+
+                        {/* TOOLTIP */}
+                        {collapsed && (
+                          <span className="absolute left-14 bg-black text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">
+                            {item.label}
+                          </span>
+                        )}
+                      </div>
+                    </Link>
+                  );
+                })}
               </div>
-            )}
-          </div>
-
-          <button
-            onClick={() => setCollapsed(v => !v)}
-            className="hidden lg:block rounded-md p-1 hover:bg-slate-100 text-slate-600"
-          >
-            {collapsed ? (
-              <ChevronRight className="h-4 w-4" />
-            ) : (
-              <ChevronLeft className="h-4 w-4" />
-            )}
-          </button>
-        </div>
-
-        {/* NAVIGATION */}
-        <nav className="flex-1 px-2 py-4 space-y-1">
-          {menus.map(item => {
-            const isActive = pathname === item.href;
-            const Icon = item.icon;
-
-            return (
-              <Link key={item.href} href={item.href}>
-                <div
-                  onClick={() => setMobileOpen(false)}
-                  className={cn(
-                    'relative group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all',
-                    isActive
-                      ? 'bg-blue-50 text-blue-700 shadow-sm'
-                      : 'text-slate-600 hover:bg-white hover:shadow'
-                  )}
-                >
-                  <span
-                    className={cn(
-                      'absolute left-0 h-6 w-1 rounded-r bg-blue-600',
-                      isActive ? 'opacity-100' : 'opacity-0'
-                    )}
-                  />
-
-                  <Icon
-                    className={cn(
-                      'h-5 w-5 shrink-0',
-                      isActive
-                        ? 'text-blue-600'
-                        : 'text-slate-400 group-hover:text-slate-600'
-                    )}
-                  />
-
-                  {!collapsed && <span>{item.label}</span>}
-                </div>
-              </Link>
-            );
-          })}
+            </div>
+          ))}
         </nav>
 
-        {/* FOOTER */}
+        {/* ================= FOOTER ================= */}
         <div className="border-t bg-white p-2">
           <button
             onClick={handleLogout}
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-red-50 hover:text-red-600 transition"
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-red-50 hover:text-red-600 transition select-none"
           >
             <LogOut className="h-5 w-5 shrink-0" />
             {!collapsed && <span>Logout</span>}
