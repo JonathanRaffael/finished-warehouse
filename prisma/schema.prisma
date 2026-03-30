@@ -77,7 +77,6 @@ model IncomingTransaction {
 
   incomingQty Int @default(0)
 
-  // legacy
   outgoingQty Int @default(0)
   balance     Int @default(0)
 
@@ -92,11 +91,27 @@ model IncomingTransaction {
 
   product Product @relation(fields: [computerCode], references: [computerCode], onDelete: Cascade)
 
-  afterOQC   AfterOQCTransaction[]
-  deflashings Deflashing[]   // ✅ FIX RELATION (WAJIB ADA)
+  afterOQC    AfterOQCTransaction[]
+  deflashings Deflashing[]
+
+  outHistories IncomingOutHistory[] // 🔥 INI WAJIB
 
   @@index([computerCode])
   @@index([date])
+}
+
+model IncomingOutHistory {
+  id String @id @default(cuid())
+
+  incomingId String
+  incoming IncomingTransaction @relation(fields: [incomingId], references: [id], onDelete: Cascade)
+
+  qtyOut Int
+  responsiblePerson String
+
+  createdAt DateTime @default(now())
+
+  @@index([incomingId]) // ✅ tambah ini
 }
 
 //

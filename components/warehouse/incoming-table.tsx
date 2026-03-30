@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 
-interface OutgoingHistory {
+interface OutHistory {
   id: string
   qtyOut: number
   createdAt: string
@@ -23,7 +23,7 @@ interface Transaction {
   responsiblePerson: string
   batch: number
   status: string
-  outgoingTransactions?: OutgoingHistory[]
+  outHistories?: OutHistory[]
 }
 
 interface IncomingTableProps {
@@ -59,40 +59,33 @@ export function IncomingTable({
   }
 
   const saveEdit = async (tx: Transaction) => {
-
-  try {
-
-    const res = await fetch(`/api/transactions/incoming/${tx.id}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        incomingQty: editQty,
-        batch: editBatch
+    try {
+      const res = await fetch(`/api/transactions/incoming/${tx.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          incomingQty: editQty,
+          batch: editBatch
+        })
       })
-    })
 
-    const result = await res.json()
+      const result = await res.json()
 
-    if (!res.ok) {
-      alert(result.message || 'Failed to update')
-      return
+      if (!res.ok) {
+        alert(result.message || 'Failed to update')
+        return
+      }
+
+      setEditingId(null)
+      location.reload()
+
+    } catch (error) {
+      console.error('Update failed', error)
+      alert('Server error')
     }
-
-    setEditingId(null)
-
-    // refresh page supaya data terbaru muncul
-    location.reload()
-
-  } catch (error) {
-
-    console.error('Update failed', error)
-    alert('Server error')
-
   }
-
-}
 
   const filtered = [...transactions]
     .sort((a, b) => a.id.localeCompare(b.id))
@@ -110,7 +103,6 @@ export function IncomingTable({
   )
 
   return (
-
     <Card className="border p-6 space-y-4">
 
       <div className="flex items-center justify-between">
@@ -144,9 +136,7 @@ export function IncomingTable({
         <table className="w-full text-xs">
 
           <thead className="bg-slate-100">
-
             <tr className="text-center">
-
               <th className="py-3">DATE</th>
               <th>CODE</th>
               <th>PART</th>
@@ -155,26 +145,18 @@ export function IncomingTable({
               <th>IN</th>
               <th>REM</th>
               <th>STATUS</th>
-
               {!hideAction && <th>ACTION</th>}
-
             </tr>
-
           </thead>
 
           <tbody>
 
             {paginated.length === 0 ? (
-
               <tr>
-                <td
-                  colSpan={hideAction ? 8 : 9}
-                  className="py-10 text-center text-slate-400"
-                >
+                <td colSpan={hideAction ? 8 : 9} className="py-10 text-center text-slate-400">
                   No incoming data
                 </td>
               </tr>
-
             ) : (
 
               paginated.map(tx => {
@@ -185,14 +167,11 @@ export function IncomingTable({
                     : 0
 
                 return (
-
                   <Fragment key={tx.id}>
 
                     <tr className="border-b hover:bg-slate-50 text-center">
 
-                      <td>
-                        {new Date(tx.date).toLocaleDateString('id-ID')}
-                      </td>
+                      <td>{new Date(tx.date).toLocaleDateString('id-ID')}</td>
 
                       <td className="font-mono text-blue-600">
                         {tx.computerCode}
@@ -204,264 +183,154 @@ export function IncomingTable({
                         {tx.productName}
                       </td>
 
-                      {/* BATCH */}
                       <td className="font-semibold text-purple-600">
-
                         {editingId === tx.id ? (
-
                           <Input
                             type="number"
                             value={editBatch}
                             onChange={e => setEditBatch(Number(e.target.value))}
                             className="w-20 mx-auto text-center"
                           />
-
                         ) : (
                           tx.batch || '-'
                         )}
-
                       </td>
 
-                      {/* INCOMING */}
                       <td className="font-bold text-green-600">
-
                         {editingId === tx.id ? (
-
                           <Input
                             type="number"
                             value={editQty}
                             onChange={e => setEditQty(Number(e.target.value))}
                             className="w-20 mx-auto text-center"
                           />
-
                         ) : (
                           tx.incomingQty
                         )}
-
                       </td>
 
-                      {/* REMAINING */}
                       <td className="font-bold text-orange-600">
-
                         {tx.remainingQty}
-
                         <div className="h-1 bg-slate-200 rounded mt-1 mx-4">
                           <div
-                            className="h-1 bg-orange-500 rounded transition-all"
+                            className="h-1 bg-orange-500 rounded"
                             style={{ width: `${percent}%` }}
                           />
                         </div>
-
                       </td>
 
                       <td>
-
-                        <span
-                          className={`px-2 py-1 text-[10px] rounded ${
-                            tx.status === 'OPEN'
-                              ? 'bg-green-100 text-green-700'
-                              : 'bg-slate-200 text-slate-600'
-                          }`}
-                        >
+                        <span className={`px-2 py-1 text-[10px] rounded ${
+                          tx.status === 'OPEN'
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-slate-200 text-slate-600'
+                        }`}>
                           {tx.status}
                         </span>
-
                       </td>
 
                       {!hideAction && (
-
                         <td>
-
                           <div className="flex justify-center gap-2">
 
-                            {editingId === tx.id ? (
+                            <Button
+                              size="sm"
+                              disabled={tx.remainingQty <= 0}
+                              onClick={() => onSelect?.(tx)}
+                            >
+                              OUT
+                            </Button>
 
-                              <>
-                                <Button size="sm" onClick={() => saveEdit(tx)}>
-                                  Save
-                                </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() =>
+                                setExpandedId(
+                                  expandedId === tx.id ? null : tx.id
+                                )
+                              }
+                            >
+                              History
+                            </Button>
 
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={cancelEdit}
-                                >
-                                  Cancel
-                                </Button>
-                              </>
-
-                            ) : (
-
-                              <>
-                                <Button
-                                  size="sm"
-                                  disabled={tx.remainingQty <= 0}
-                                  onClick={() => onSelect?.(tx)}
-                                >
-                                  OUT
-                                </Button>
-
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() =>
-                                    setExpandedId(
-                                      expandedId === tx.id ? null : tx.id
-                                    )
-                                  }
-                                >
-                                  History
-                                </Button>
-
-                                <Button
-                                  size="sm"
-                                  variant="secondary"
-                                  onClick={() => startEdit(tx)}
-                                >
-                                  Edit
-                                </Button>
-                              </>
-
-                            )}
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => startEdit(tx)}
+                            >
+                              Edit
+                            </Button>
 
                           </div>
-
                         </td>
-
                       )}
 
                     </tr>
 
-                    {/* HISTORY ROW */}
+                    {/* HISTORY */}
 
                     {expandedId === tx.id && (
-
                       <tr>
-
-                        <td
-                          colSpan={hideAction ? 8 : 9}
-                          className="bg-slate-50 px-12 py-4"
-                        >
+                        <td colSpan={hideAction ? 8 : 9} className="bg-slate-50 px-12 py-4">
 
                           <div className="space-y-3">
 
-                            <div className="flex justify-between items-center">
-
-                              <p className="text-xs font-semibold text-slate-600">
-                                📤 Outgoing History ({tx.outgoingTransactions?.length || 0} process)
+                            <div className="flex justify-between">
+                              <p className="text-xs font-semibold">
+                                📤 Outgoing History ({tx.outHistories?.length || 0})
                               </p>
 
                               <span className="text-xs text-slate-400">
-                                Total OUT:{' '}
-                                {tx.outgoingTransactions?.reduce(
-                                  (sum, h) => sum + h.qtyOut,
-                                  0
-                                ) || 0}
+                                Total OUT: {tx.outHistories?.reduce((sum, h) => sum + h.qtyOut, 0) || 0}
                               </span>
-
                             </div>
 
-                            {tx.outgoingTransactions?.length ? (
+                            {tx.outHistories?.length ? (
+                              tx.outHistories
+                                .sort((a, b) =>
+                                  new Date(b.createdAt).getTime() -
+                                  new Date(a.createdAt).getTime()
+                                )
+                                .map((h, i) => (
+                                  <div key={h.id} className="flex justify-between bg-white border px-4 py-2 rounded">
 
-                              <div className="space-y-2">
+                                    <div>
+                                      <p className="text-xs text-slate-500">
+                                        {new Date(h.createdAt).toLocaleString('id-ID')}
+                                      </p>
 
-                                {tx.outgoingTransactions
-                                  .sort(
-                                    (a, b) =>
-                                      new Date(b.createdAt).getTime() -
-                                      new Date(a.createdAt).getTime()
-                                  )
-                                  .map((h, i) => (
-
-                                    <div
-                                      key={h.id}
-                                      className="flex justify-between items-center bg-white rounded border px-4 py-2"
-                                    >
-
-                                      <div>
-
-                                        <p className="text-xs text-slate-500">
-                                          {new Date(h.createdAt).toLocaleString('id-ID')}
-                                        </p>
-
-                                        <p className="text-xs font-medium text-slate-700">
-                                          Partial #{i + 1} • Operator: {h.responsiblePerson}
-                                        </p>
-
-                                      </div>
-
-                                      <span className="text-sm font-bold text-red-600">
-                                        -{h.qtyOut}
-                                      </span>
-
+                                      <p className="text-xs font-medium">
+                                        Partial #{i + 1} • {h.responsiblePerson}
+                                      </p>
                                     </div>
 
-                                  ))}
+                                    <span className="text-red-600 font-bold">
+                                      -{h.qtyOut}
+                                    </span>
 
-                              </div>
-
+                                  </div>
+                                ))
                             ) : (
-
-                              <p className="text-xs text-slate-400 italic">
+                              <p className="text-xs italic text-slate-400">
                                 No outgoing history
                               </p>
-
                             )}
 
                           </div>
 
                         </td>
-
                       </tr>
-
                     )}
 
                   </Fragment>
-
                 )
-
               })
 
             )}
 
           </tbody>
-
         </table>
-
       </div>
-
-      <div className="flex items-center justify-between pt-2">
-
-        <p className="text-xs text-slate-500">
-          Page {page} of {totalPages || 1}
-        </p>
-
-        <div className="flex gap-2">
-
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={page === 1}
-            onClick={() => setPage(p => p - 1)}
-          >
-            Previous
-          </Button>
-
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={page === totalPages || totalPages === 0}
-            onClick={() => setPage(p => p + 1)}
-          >
-            Next
-          </Button>
-
-        </div>
-
-      </div>
-
     </Card>
-
   )
-
 }

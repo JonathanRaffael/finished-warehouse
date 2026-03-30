@@ -7,94 +7,93 @@ export async function POST(req: NextRequest) {
     const { incomingId, qty, responsiblePerson } = body
 
     if (!incomingId || !qty || qty <= 0) {
-      return NextResponse.json({ message: 'Invalid payload' }, { status: 400 })
+      return NextResponse.json(
+        { message: 'Invalid payload' },
+        { status: 400 }
+      )
     }
 
-    const result = await prisma.$transaction(async (tx) => {
+    /* ================= GET INCOMING ================= */
 
-      /* ================= GET INCOMING ================= */
+    const incoming = await prisma.incomingTransaction.findUnique({
+      where: { id: incomingId }
+    })
 
-      const incoming = await tx.incomingTransaction.findUnique({
-        where: { id: incomingId }
-      })
+    if (!incoming) throw new Error('Incoming not found')
+    if (!incoming.remainingQty || incoming.remainingQty <= 0)
+      throw new Error('No remaining stock')
+    if (qty > incoming.remainingQty)
+      throw new Error('Qty melebihi remaining incoming')
 
-      if (!incoming) {
-        throw new Error('Incoming not found')
+    /* ================= ANTI DOUBLE QC ================= */
+
+    const existingPending = await prisma.afterOQCTransaction.findFirst({
+      where: {
+        incomingId,
+        status: 'PENDING'
       }
+    })
 
-      if (!incoming.remainingQty || incoming.remainingQty <= 0) {
-        throw new Error('No remaining stock')
+    if (existingPending) {
+      throw new Error('Masih ada QC yang belum selesai')
+    }
+
+    /* ================= CREATE QC ================= */
+
+    const afterOQC = await prisma.afterOQCTransaction.create({
+      data: {
+        incomingId,
+        computerCode: incoming.computerCode,
+        partNo: incoming.partNo,
+        productName: incoming.productName,
+        batch: incoming.batch,
+        beforeQty: qty,
+        afterQty: 0,
+        ngQty: 0,
+        spareQty: 0,
+        responsiblePerson,
+        source: 'INCOMING',
+        status: 'PENDING'
       }
+    })
 
-      if (qty > incoming.remainingQty) {
-        throw new Error('Qty melebihi remaining incoming')
+    /* ================= ✅ CREATE HISTORY ================= */
+
+    await prisma.incomingOutHistory.create({
+      data: {
+        incomingId,
+        qtyOut: qty,
+        responsiblePerson
       }
+    })
 
-      /* ================= 🔒 ANTI DOUBLE ================= */
+    /* ================= LOG ================= */
 
-      const existingPending = await tx.afterOQCTransaction.findFirst({
-        where: {
-          incomingId,
-          status: 'PENDING'
-        }
-      })
-
-      if (existingPending) {
-        throw new Error('Masih ada QC yang belum selesai')
+    await prisma.afterOQCLog.create({
+      data: {
+        afterOQCId: afterOQC.id,
+        okQty: 0,
+        ngQty: 0,
+        spareQty: 0,
+        responsiblePerson
       }
+    })
 
-      /* ================= CREATE QC ================= */
+    /* ================= UPDATE INCOMING ================= */
 
-      const afterOQC = await tx.afterOQCTransaction.create({
-        data: {
-          incomingId,
-          computerCode: incoming.computerCode,
-          partNo: incoming.partNo,
-          productName: incoming.productName,
-          batch: incoming.batch,
+    const newRemaining = incoming.remainingQty - qty
 
-          beforeQty: qty,
-
-          afterQty: 0,
-          ngQty: 0,
-          spareQty: 0,
-
-          responsiblePerson,
-          source: 'INCOMING',
-          status: 'PENDING'
-        }
-      })
-
-      /* ================= LOG ================= */
-
-      await tx.afterOQCLog.create({
-        data: {
-          afterOQCId: afterOQC.id,
-          okQty: 0,
-          ngQty: 0,
-          spareQty: 0,
-          responsiblePerson
-        }
-      })
-
-      /* ================= UPDATE INCOMING ================= */
-
-      const newRemaining = incoming.remainingQty - qty
-
-      await tx.incomingTransaction.update({
-        where: { id: incomingId },
-        data: {
-          remainingQty: newRemaining,
-          status: newRemaining === 0 ? 'CLOSED' : 'OPEN'
-        }
-      })
-
-      return afterOQC
+    await prisma.incomingTransaction.update({
+      where: { id: incomingId },
+      data: {
+        remainingQty: newRemaining,
+        status: newRemaining === 0 ? 'CLOSED' : 'OPEN'
+      }
     })
 
     return NextResponse.json({
       success: true,
-      data: result
+      data: afterOQC
     })
 
   } catch (e: any) {

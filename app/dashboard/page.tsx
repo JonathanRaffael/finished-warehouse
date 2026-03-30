@@ -69,8 +69,9 @@ export default function DashboardPage() {
 
   /* ================= UTILS ================= */
 
-  const safe = (n:number)=> Math.max(0, n)
-  const format = (n:number)=> n.toLocaleString()
+  const safe = (n:number)=> n ?? 0
+  const format = (n:number)=> 
+  n < 0 ? `(${Math.abs(n).toLocaleString()})` : n.toLocaleString()
 
   const stockColor = (n:number)=>{
     if(n < 0) return 'text-red-700 bg-red-100'
@@ -136,9 +137,9 @@ export default function DashboardPage() {
       ),
 
       warehouseStock: filtered.reduce(
-        (a, b) => a + safe(b.finalStockWarehouse),
-        0
-      )
+  (a, b) => a + b.finalStockWarehouse,
+  0
+)
 
     };
 
@@ -356,7 +357,7 @@ export default function DashboardPage() {
                       </td>
 
                       <td className="px-3 py-2 tabular-nums font-bold bg-green-100">
-                        {format(safe(r.finalStock))}
+                        {format(r.finalStock)}
                         <p className="text-[10px] text-slate-500">
                           incl. QC + Incoming
                         </p>

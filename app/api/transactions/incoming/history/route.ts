@@ -18,7 +18,8 @@ export async function GET() {
       },
 
       include: {
-        afterOQC: {
+        // ✅ WAJIB
+        outHistories: {
           orderBy: {
             createdAt: 'desc'
           }
@@ -43,14 +44,12 @@ export async function GET() {
       batch: tx.batch,
       status: tx.status,
 
-      // history parsial release QC
-      outgoingTransactions: tx.afterOQC.map(o => ({
-
-        id: o.id,
-        qtyOut: o.beforeQty,   // ✅ FIX
-        createdAt: o.createdAt,
-        responsiblePerson: o.responsiblePerson
-
+      // ✅ FIX DI SINI
+      outHistories: tx.outHistories.map(h => ({
+        id: h.id,
+        qtyOut: h.qtyOut,
+        createdAt: h.createdAt,
+        responsiblePerson: h.responsiblePerson
       }))
 
     }))
