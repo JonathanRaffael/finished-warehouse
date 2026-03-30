@@ -238,7 +238,7 @@ export function IncomingTable({
                               disabled={tx.remainingQty <= 0}
                               onClick={() => onSelect?.(tx)}
                             >
-                              OUT
+                              OUT'S
                             </Button>
 
                             <Button
