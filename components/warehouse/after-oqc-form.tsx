@@ -35,12 +35,20 @@ export function AfterOQCForm({ onSuccess, selectedQueue }: AfterOQCFormProps) {
   /* ================= QTY ================= */
 
   const [before, setBefore] = useState(0)
-  const [ok, setOk] = useState(0)
-  const [ng, setNg] = useState(0)
-  const [spare, setSpare] = useState(0)
+
+  // 🔥 FIX: pakai string
+  const [ok, setOk] = useState<string>('0')
+  const [ng, setNg] = useState<string>('0')
+  const [spare, setSpare] = useState<string>('0')
 
   const [responsiblePerson, setResponsiblePerson] = useState('')
   const [loading, setLoading] = useState(false)
+
+  /* ================= CONVERT NUMBER ================= */
+
+  const okNumber = Number(ok || 0)
+  const ngNumber = Number(ng || 0)
+  const spareNumber = Number(spare || 0)
 
   /* ================= PRODUCT LOOKUP ================= */
 
@@ -69,7 +77,7 @@ export function AfterOQCForm({ onSuccess, selectedQueue }: AfterOQCFormProps) {
 
   }
 
-  /* ================= AUTO LOOKUP WHEN TYPING ================= */
+  /* ================= AUTO LOOKUP ================= */
 
   useEffect(() => {
 
@@ -84,7 +92,7 @@ export function AfterOQCForm({ onSuccess, selectedQueue }: AfterOQCFormProps) {
 
   }, [computerCode])
 
-  /* ================= AUTO FILL FROM QUEUE ================= */
+  /* ================= AUTO FILL ================= */
 
   useEffect(() => {
 
@@ -96,15 +104,13 @@ export function AfterOQCForm({ onSuccess, selectedQueue }: AfterOQCFormProps) {
 
       setBefore(selectedQueue.beforeQty)
 
-      /* 🔥 AUTO BATCH FROM INCOMING */
-
       if (selectedQueue.batch !== undefined) {
         setBatch(String(selectedQueue.batch))
       }
 
-      setOk(0)
-      setNg(0)
-      setSpare(0)
+      setOk('0')
+      setNg('0')
+      setSpare('0')
 
     }
 
@@ -112,20 +118,20 @@ export function AfterOQCForm({ onSuccess, selectedQueue }: AfterOQCFormProps) {
 
   /* ================= CALCULATION ================= */
 
-  const processTotal = ok
-  const finalStock = ok + spare
+  const processTotal = okNumber
+  const finalStock = okNumber + spareNumber
 
-  const progress =  
-    before > 0 ? (ok / before) * 100 : 0
+  const progress =
+    before > 0 ? (okNumber / before) * 100 : 0
 
   const isInvalid =
     !computerCode ||
     !partNo ||
     !productName ||
     !responsiblePerson ||
-    ok < 0 ||
-    ng < 0 ||
-    spare < 0
+    okNumber < 0 ||
+    ngNumber < 0 ||
+    spareNumber < 0
 
   /* ================= SUBMIT ================= */
 
@@ -143,11 +149,11 @@ export function AfterOQCForm({ onSuccess, selectedQueue }: AfterOQCFormProps) {
           computerCode,
           partNo,
           productName,
-          batch, // 🔥 kirim batch juga
+          batch,
           beforeQty: before,
-          afterQty: ok,
-          ngQty: ng,
-          spareQty: spare,
+          afterQty: okNumber,
+          ngQty: ngNumber,
+          spareQty: spareNumber,
           finalStock,
           responsiblePerson
         })
@@ -165,9 +171,9 @@ export function AfterOQCForm({ onSuccess, selectedQueue }: AfterOQCFormProps) {
       setProductName('')
       setBatch('')
       setBefore(0)
-      setOk(0)
-      setNg(0)
-      setSpare(0)
+      setOk('0')
+      setNg('0')
+      setSpare('0')
       setResponsiblePerson('')
 
       onSuccess()
@@ -229,11 +235,8 @@ export function AfterOQCForm({ onSuccess, selectedQueue }: AfterOQCFormProps) {
           <Input value={productName} readOnly />
         </div>
 
-        {/* 🔥 BATCH FIELD */}
-
         <div>
           <p className="text-xs text-slate-500">Batch / Note</p>
-
           <Input
             value={batch}
             readOnly={!!selectedQueue}
@@ -250,7 +253,6 @@ export function AfterOQCForm({ onSuccess, selectedQueue }: AfterOQCFormProps) {
 
         <div>
           <label className="text-xs text-slate-500">Before</label>
-
           <Input
             type="number"
             value={before}
@@ -262,31 +264,43 @@ export function AfterOQCForm({ onSuccess, selectedQueue }: AfterOQCFormProps) {
 
         <div>
           <label className="text-xs text-slate-500">OK</label>
-
           <Input
             type="number"
             value={ok}
-            onChange={e => setOk(Number(e.target.value))}
+            onChange={e => {
+              const value = e.target.value
+              if (value === '' || Number(value) >= 0) {
+                setOk(value)
+              }
+            }}
           />
         </div>
 
         <div>
           <label className="text-xs text-slate-500">Spare</label>
-
           <Input
             type="number"
             value={spare}
-            onChange={e => setSpare(Number(e.target.value))}
+            onChange={e => {
+              const value = e.target.value
+              if (value === '' || Number(value) >= 0) {
+                setSpare(value)
+              }
+            }}
           />
         </div>
 
         <div>
           <label className="text-xs text-slate-500">NG</label>
-
           <Input
             type="number"
             value={ng}
-            onChange={e => setNg(Number(e.target.value))}
+            onChange={e => {
+              const value = e.target.value
+              if (value === '' || Number(value) >= 0) {
+                setNg(value)
+              }
+            }}
           />
         </div>
 

@@ -2,9 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
 export async function GET(request: NextRequest) {
-
   try {
-
     const session = request.cookies.get('session')
     if (!session) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
@@ -55,10 +53,20 @@ export async function GET(request: NextRequest) {
         0
       )
 
-      /* ================= AFTER OQC ================= */
+      /* ================= AFTER OQC (FIXED - SUPPORT PARSIAL) ================= */
+      // Ambil SEMUA hasil QC, tidak peduli status
+      // Selama sudah ada afterQty / spareQty → masuk dashboard
 
-      const totalAfterOQC = doneOQC.reduce(
-        (sum, t) => sum + (t.afterQty ?? 0) + (t.spareQty ?? 0),
+      const totalAfterOQC = product.afterOQCTransactions.reduce(
+        (sum, t) => {
+          const after = t.afterQty ?? 0
+          const spare = t.spareQty ?? 0
+
+          // hanya hitung kalau sudah ada hasil QC
+          if (after === 0 && spare === 0) return sum
+
+          return sum + after + spare
+        },
         0
       )
 
@@ -86,7 +94,6 @@ export async function GET(request: NextRequest) {
       )
 
       /* ================= FINAL STOCK ================= */
-      // sesuai rumus:
       // initial + incoming + before + after - outgoing
 
       const finalStock =
@@ -124,20 +131,16 @@ export async function GET(request: NextRequest) {
         finalStock,
         finalStockWarehouse
       }
-
     })
 
     return NextResponse.json(dashboardData)
 
   } catch (error) {
-
     console.error('[Dashboard API]', error)
 
     return NextResponse.json(
       { message: 'Internal server error' },
       { status: 500 }
     )
-
   }
-
 }
