@@ -20,6 +20,7 @@ export function DeflashingIncomingForm({ onSuccess }: Props) {
   const { toast } = useToast()
 
   const [products, setProducts] = useState<Product[]>([])
+
   const [computerCode, setComputerCode] = useState('')
   const [partNo, setPartNo] = useState('')
   const [productName, setProductName] = useState('')
@@ -29,7 +30,7 @@ export function DeflashingIncomingForm({ onSuccess }: Props) {
     new Date().toISOString().split('T')[0]
   )
 
-  const [qtyIn, setQtyIn] = useState(0)
+  const [qtyIn, setQtyIn] = useState<number | ''>('')
   const [incomingBy, setIncomingBy] = useState('')
   const [batchNo, setBatchNo] = useState('')
   const [loading, setLoading] = useState(false)
@@ -41,10 +42,12 @@ export function DeflashingIncomingForm({ onSuccess }: Props) {
   }, [])
 
   const handleComputerCodeChange = (value: string) => {
-    const code = value.toUpperCase()
+    const code = value.toUpperCase().trim()
     setComputerCode(code)
 
-    const found = products.find(p => p.computerCode === code)
+    const found = products.find(
+      p => p.computerCode.toUpperCase().trim() === code
+    )
 
     if (found) {
       setPartNo(found.partNo)
@@ -56,11 +59,29 @@ export function DeflashingIncomingForm({ onSuccess }: Props) {
   }
 
   const handleSubmit = async () => {
-    if (!computerCode || !partNo || !productName || qtyIn <= 0 || !incomingBy) {
+    if (loading) return
+
+    // 🔥 VALIDASI PRODUCT WAJIB
+    if (!partNo || !productName) {
+      toast({
+        variant: 'destructive',
+        title: 'Product Not Found',
+        description: 'Computer Code tidak valid'
+      })
+      return
+    }
+
+    // 🔥 VALIDASI FIELD
+    if (
+      !computerCode ||
+      !incomingBy ||
+      !qtyIn ||
+      Number(qtyIn) <= 0
+    ) {
       toast({
         variant: 'destructive',
         title: 'Incomplete Form',
-        description: 'Please fill all required fields'
+        description: 'Please fill all required fields correctly'
       })
       return
     }
@@ -76,34 +97,39 @@ export function DeflashingIncomingForm({ onSuccess }: Props) {
           partNo,
           productName,
           productionType,
-          qtyIn,
-          incomingBy,
+          qtyIn: Number(qtyIn),
+          incomingBy: incomingBy.trim().toUpperCase(),
           incomingDate,
-          batchNo
+          batchNo: batchNo.trim()
         })
       })
 
-      if (!res.ok) throw new Error()
+      const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(data.message || 'Failed to save')
+      }
 
       toast({
         title: 'Incoming Saved',
         description: 'Item added to Deflashing Queue'
       })
 
+      // 🔄 RESET
       setComputerCode('')
       setPartNo('')
       setProductName('')
-      setQtyIn(0)
+      setQtyIn('')
       setIncomingBy('')
       setBatchNo('')
 
       onSuccess()
 
-    } catch {
+    } catch (error: any) {
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: 'Failed to save incoming'
+        description: error.message || 'Failed to save incoming'
       })
     } finally {
       setLoading(false)
@@ -124,7 +150,7 @@ export function DeflashingIncomingForm({ onSuccess }: Props) {
         </span>
       </div>
 
-      {/* PRODUCT INFORMATION */}
+      {/* PRODUCT */}
       <div className="bg-slate-50 border rounded p-4 space-y-3">
 
         <p className="text-xs text-slate-500">
@@ -134,30 +160,20 @@ export function DeflashingIncomingForm({ onSuccess }: Props) {
         <div className="grid grid-cols-3 gap-4">
 
           <Input
-            placeholder="Computer Code *"
+            placeholder="Computer Code"
             value={computerCode}
             onChange={e => handleComputerCodeChange(e.target.value)}
             className="font-mono"
           />
 
-          <Input
-            value={partNo}
-            readOnly
-            placeholder="Part No"
-          />
-
-          <Input
-            value={productName}
-            readOnly
-            placeholder="Product Name"
-          />
+          <Input value={partNo} readOnly placeholder="Part No" />
+          <Input value={productName} readOnly placeholder="Product Name" />
 
         </div>
 
       </div>
 
-      {/* INCOMING DETAILS */}
-
+      {/* DETAILS */}
       <div className="bg-slate-50 border rounded p-4 space-y-3">
 
         <p className="text-xs text-slate-500">
@@ -181,17 +197,21 @@ export function DeflashingIncomingForm({ onSuccess }: Props) {
             onChange={e => setIncomingDate(e.target.value)}
           />
 
-          <Input
-            type="number"
-            min={0}
-            placeholder="Incoming Qty *"
-            value={qtyIn}
-            onChange={e => setQtyIn(Number(e.target.value))}
-            className="font-bold text-center"
-          />
+          <div className="space-y-1">
+            <Input
+              type="number"
+              min={1}
+              placeholder="Incoming Qty"
+              value={qtyIn}
+              onChange={e => setQtyIn(e.target.value ? Number(e.target.value) : '')}
+              className="text-center"
+            />
+            <p className="text-xs text-slate-400">
+            </p>
+          </div>
 
           <Input
-            placeholder="Incoming By *"
+            placeholder="Responsible Person"
             value={incomingBy}
             onChange={e => setIncomingBy(e.target.value)}
           />
@@ -199,7 +219,7 @@ export function DeflashingIncomingForm({ onSuccess }: Props) {
         </div>
 
         <Input
-          placeholder="Batch Number"
+          placeholder="Batch Number (optional)"
           value={batchNo}
           onChange={e => setBatchNo(e.target.value)}
         />
@@ -209,7 +229,7 @@ export function DeflashingIncomingForm({ onSuccess }: Props) {
       {/* ACTION */}
       <Button
         onClick={handleSubmit}
-        disabled={loading}
+        disabled={loading || !partNo}
         className="w-full bg-blue-600 text-white"
       >
         {loading ? 'Saving Incoming...' : 'Save Incoming'}

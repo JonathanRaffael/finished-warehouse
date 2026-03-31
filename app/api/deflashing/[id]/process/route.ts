@@ -5,9 +5,7 @@ export async function PATCH(
   req: Request,
   context: { params: Promise<{ id: string }> }
 ) {
-
   try {
-
     const { id } = await context.params
     const body = await req.json()
 
@@ -67,7 +65,7 @@ export async function PATCH(
     await prisma.deflashingProcessLog.create({
       data: {
         deflashingId: id,
-        batchNo: record.batchNo,   // ✅ batch ikut disimpan
+        batchNo: record.batchNo,
         qtyOut,
         ngQty,
         spareQty: 0,
@@ -87,75 +85,37 @@ export async function PATCH(
       }
     })
 
-    /* ================= UPDATE STOCK ================= */
-
-    await prisma.product.update({
-      where: { computerCode: record.computerCode },
-      data: {
-        initialStock: {
-          increment: qtyOut
-        }
-      }
-    })
-
     /* ================= CREATE QC QUEUE ================= */
 
-    if (qtyOut > 0) {
+if (qtyOut > 0) {
+  await prisma.afterOQCTransaction.create({
+    data: {
+      computerCode: record.computerCode,
+      partNo: record.partNo,
+      productName: record.productName,
+      batch: record.batchNo,
 
-      if (!record.incomingId) {
+      beforeQty: qtyOut,
 
-        console.error('❌ Deflashing missing incomingId:', record.id)
+      afterQty: 0,
+      ngQty: 0,
+      spareQty: 0,
 
-      } else {
-
-        await prisma.afterOQCTransaction.create({
-          data: {
-
-            computerCode: record.computerCode,
-            partNo: record.partNo,
-            productName: record.productName,
-
-            batch: record.batchNo,   // ✅ FIX: batch ikut dibawa ke QC Queue
-
-            beforeQty: qtyOut,
-
-            afterQty: 0,
-            ngQty: 0,
-            spareQty: 0,
-
-            status: 'PENDING',
-
-            source: 'DEFLASHING',
-
-            responsiblePerson: processedBy,
-
-            incomingId: record.incomingId
-
-          }
-        })
-
-        console.log(
-          '✅ QC Queue created from Deflashing:',
-          record.computerCode,
-          'Batch:',
-          record.batchNo
-        )
-
-      }
-
+      status: 'PENDING',
+      source: 'DEFLASHING',
+      responsiblePerson: processedBy
     }
+  })
+}
 
     return NextResponse.json(updated)
 
   } catch (error) {
-
     console.error('[PROCESS DEFLASHING ERROR]', error)
 
     return NextResponse.json(
       { message: 'Internal Server Error' },
       { status: 500 }
     )
-
   }
-
 }

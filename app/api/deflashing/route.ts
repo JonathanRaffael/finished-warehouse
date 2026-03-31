@@ -10,11 +10,7 @@ export async function GET() {
       where: { status: 'PENDING' },
       orderBy: { createdAt: 'asc' },
       include: {
-        incoming: {
-          select: {
-            batch: true
-          }
-        }
+        logs: true
       }
     })
 
@@ -23,11 +19,6 @@ export async function GET() {
       where: { status: 'DONE' },
       orderBy: { completedAt: 'desc' },
       include: {
-        incoming: {
-          select: {
-            batch: true
-          }
-        },
         logs: {
           orderBy: {
             processedAt: 'asc'

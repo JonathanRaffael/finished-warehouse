@@ -15,35 +15,45 @@ export async function POST(req: Request) {
       batchNo
     } = body
 
-    if (!computerCode || !partNo || !productName || qtyIn <= 0 || !incomingBy) {
-      return NextResponse.json(
-        { message: 'Missing required fields' },
-        { status: 400 }
-      )
+    // 🔒 normalize
+    const code = computerCode?.toString().trim()
+    const part = partNo?.toString().trim()
+    const name = productName?.toString().trim()
+    const person = incomingBy?.toString().trim()
+    const qty = Number(qtyIn)
+    const batch = batchNo?.toString().trim() || null
+
+    // 🔥 VALIDATION
+    if (!code) {
+      return NextResponse.json({ message: 'Computer Code required' }, { status: 400 })
     }
 
-    // ambil incoming terbaru
-    const incoming = await prisma.incomingTransaction.findFirst({
-      orderBy: { createdAt: 'desc' }
-    })
-
-    if (!incoming) {
-      return NextResponse.json(
-        { message: 'No IncomingTransaction found' },
-        { status: 400 }
-      )
+    if (!part) {
+      return NextResponse.json({ message: 'Part No required' }, { status: 400 })
     }
 
+    if (!name) {
+      return NextResponse.json({ message: 'Product Name required' }, { status: 400 })
+    }
+
+    if (!person) {
+      return NextResponse.json({ message: 'Incoming By required' }, { status: 400 })
+    }
+
+    if (isNaN(qty) || qty <= 0) {
+      return NextResponse.json({ message: 'Qty must be greater than 0' }, { status: 400 })
+    }
+
+    // 🚀 CREATE DEFLASHING (FULLY INDEPENDENT)
     const data = await prisma.deflashing.create({
       data: {
-        incomingId: incoming.id,
-        computerCode,
-        partNo,
-        productName,
+        computerCode: code,
+        partNo: part,
+        productName: name,
         productionType,
-        qtyIn: Number(qtyIn),
-        incomingBy,
-        batchNo: batchNo ? Number(batchNo) : null,
+        qtyIn: qty,
+        incomingBy: person,
+        batchNo: batch,
         status: "PENDING"
       }
     })

@@ -92,7 +92,6 @@ model IncomingTransaction {
   product Product @relation(fields: [computerCode], references: [computerCode], onDelete: Cascade)
 
   afterOQC    AfterOQCTransaction[]
-  deflashings Deflashing[]
 
   outHistories IncomingOutHistory[] // 🔥 INI WAJIB
 
@@ -202,9 +201,6 @@ model OutgoingTransaction {
 model Deflashing {
   id String @id @default(cuid())
 
-  incomingId String
-  incoming IncomingTransaction @relation(fields: [incomingId], references: [id], onDelete: Cascade)
-
   incomingDate DateTime @default(now())
 
   computerCode String
@@ -229,7 +225,6 @@ model Deflashing {
   logs DeflashingProcessLog[]
 
   @@index([status])
-  @@index([incomingId])
 }
 model DeflashingProcessLog {
   id String @id @default(cuid())
@@ -247,5 +242,5 @@ model DeflashingProcessLog {
   processedAt DateTime @default(now())
 
   @@index([deflashingId])
-  @@index([batchNo])   // opsional tapi bagus untuk query
+  @@index([batchNo])
 }

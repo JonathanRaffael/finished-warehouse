@@ -202,80 +202,78 @@ export default function DeflashingPage() {
           </tr>
         )}
 
-        {done.flatMap(item =>
-          item.logs.map((log: any) => {
+        {done.map((log: any) => {
 
-            const ok = log.qtyOut
-            const ng = log.ngQty
-            const total = ok + ng
+          const ok = log.qtyOut
+          const ng = log.ngQty
+          const total = ok + ng
 
-            const ngRate =
-              total > 0 ? ((ng / total) * 100).toFixed(1) : "0"
+          const ngRate =
+            total > 0 ? ((ng / total) * 100).toFixed(1) : "0"
 
-            const date = new Date(log.processedAt)
+          const date = new Date(log.processedAt)
 
-            return (
+          return (
 
-              <tr
-                key={log.id}
-                className="border-b hover:bg-slate-50 text-center"
-              >
+            <tr
+              key={log.id}
+              className="border-b hover:bg-slate-50 text-center"
+            >
 
-                <td className="px-4 py-2">
-                  {date.toLocaleDateString()}
-                </td>
+              <td className="px-4 py-2">
+                {date.toLocaleDateString()}
+              </td>
 
-                <td className="px-4 py-2 text-xs text-slate-500">
-                  {date.toLocaleTimeString()}
-                </td>
+              <td className="px-4 py-2 text-xs text-slate-500">
+                {date.toLocaleTimeString()}
+              </td>
 
-                <td className="px-4 py-2 font-mono text-blue-600">
-                  {item.computerCode}
-                </td>
+              <td className="px-4 py-2 font-mono text-blue-600">
+                {log.computerCode}
+              </td>
 
-                <td className="px-4 py-2">
-                  {item.batchNo ?? '-'}
-                </td>
+              <td className="px-4 py-2">
+                {log.batchNo ?? '-'}
+              </td>
 
-                <td className="px-4 py-2 text-green-600 font-bold">
-                  {ok}
-                </td>
+              <td className="px-4 py-2 text-green-600 font-bold">
+                {ok}
+              </td>
 
-                <td className="px-4 py-2 text-red-600 font-bold">
-                  {ng}
-                </td>
+              <td className="px-4 py-2 text-red-600 font-bold">
+                {ng}
+              </td>
 
-                <td className="px-4 py-2 font-semibold">
-                  {total}
-                </td>
+              <td className="px-4 py-2 font-semibold">
+                {total}
+              </td>
 
-                <td className="px-4 py-2">
+              <td className="px-4 py-2">
 
-                  <span
-                    className={`px-2 py-1 rounded text-xs font-semibold
-                    ${
-                      Number(ngRate) > 5
-                        ? "bg-red-200 text-red-700"
-                        : Number(ngRate) > 2
-                        ? "bg-yellow-200 text-yellow-700"
-                        : "bg-green-200 text-green-700"
-                    }`}
-                  >
-                    {ngRate} %
-                  </span>
+                <span
+                  className={`px-2 py-1 rounded text-xs font-semibold
+                  ${
+                    Number(ngRate) > 5
+                      ? "bg-red-200 text-red-700"
+                      : Number(ngRate) > 2
+                      ? "bg-yellow-200 text-yellow-700"
+                      : "bg-green-200 text-green-700"
+                  }`}
+                >
+                  {ngRate} %
+                </span>
 
-                </td>
+              </td>
 
-                <td className="px-4 py-2 text-xs text-slate-600">
-                  {log.processedBy}
-                </td>
+              <td className="px-4 py-2 text-xs text-slate-600">
+                {log.processedBy}
+              </td>
 
-              </tr>
+            </tr>
 
-            )
+          )
 
-          })
-        )}
+        })}
 
       </tbody>
 
