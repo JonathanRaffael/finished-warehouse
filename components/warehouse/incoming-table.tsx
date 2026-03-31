@@ -62,9 +62,7 @@ export function IncomingTable({
     try {
       const res = await fetch(`/api/transactions/incoming/${tx.id}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           incomingQty: editQty,
           batch: editBatch
@@ -102,9 +100,13 @@ export function IncomingTable({
     page * limit
   )
 
+  const startItem = (page - 1) * limit + 1
+  const endItem = Math.min(page * limit, filtered.length)
+
   return (
     <Card className="border p-6 space-y-4">
 
+      {/* HEADER */}
       <div className="flex items-center justify-between">
 
         <div>
@@ -117,6 +119,10 @@ export function IncomingTable({
               Click OUT to release stock → QC
             </p>
           )}
+
+          <p className="text-xs text-slate-400 mt-1">
+            Showing {startItem}-{endItem} of {filtered.length} data
+          </p>
         </div>
 
         <Input
@@ -131,6 +137,7 @@ export function IncomingTable({
 
       </div>
 
+      {/* TABLE */}
       <div className="overflow-x-auto border rounded-lg">
 
         <table className="w-full text-xs">
@@ -238,7 +245,7 @@ export function IncomingTable({
                               disabled={tx.remainingQty <= 0}
                               onClick={() => onSelect?.(tx)}
                             >
-                              OUT'S
+                              OUT
                             </Button>
 
                             <Button
@@ -267,8 +274,6 @@ export function IncomingTable({
 
                     </tr>
 
-                    {/* HISTORY */}
-
                     {expandedId === tx.id && (
                       <tr>
                         <td colSpan={hideAction ? 8 : 9} className="bg-slate-50 px-12 py-4">
@@ -293,21 +298,17 @@ export function IncomingTable({
                                 )
                                 .map((h, i) => (
                                   <div key={h.id} className="flex justify-between bg-white border px-4 py-2 rounded">
-
                                     <div>
                                       <p className="text-xs text-slate-500">
                                         {new Date(h.createdAt).toLocaleString('id-ID')}
                                       </p>
-
                                       <p className="text-xs font-medium">
                                         Partial #{i + 1} • {h.responsiblePerson}
                                       </p>
                                     </div>
-
                                     <span className="text-red-600 font-bold">
                                       -{h.qtyOut}
                                     </span>
-
                                   </div>
                                 ))
                             ) : (
@@ -331,6 +332,36 @@ export function IncomingTable({
           </tbody>
         </table>
       </div>
+
+      {/* PAGINATION */}
+      <div className="flex justify-between items-center">
+
+        <p className="text-xs text-slate-500">
+          Page {page} of {totalPages || 1}
+        </p>
+
+        <div className="flex gap-2">
+
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={page === 1}
+            onClick={() => setPage(prev => prev - 1)}
+          >
+            ← Previous
+          </Button>
+
+          <Button
+            size="sm"
+            disabled={page === totalPages || totalPages === 0}
+            onClick={() => setPage(prev => prev + 1)}
+          >
+            Next →
+          </Button>
+
+        </div>
+      </div>
+
     </Card>
   )
 }
