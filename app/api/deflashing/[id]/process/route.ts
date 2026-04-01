@@ -11,7 +11,7 @@ export async function PATCH(
 
     const qtyOut = Number(body.qtyOut)
     const ngQty = Number(body.ngQty)
-    const processedBy = body.processedBy
+    const processedBy = body.processedBy?.trim()
 
     /* ================= VALIDATION ================= */
 
@@ -60,55 +60,60 @@ export async function PATCH(
     const newProcessedQty = record.processedQty + processNow
     const isFinished = newProcessedQty === record.qtyIn
 
-    /* ================= SAVE PROCESS LOG ================= */
+    /* ================= TRANSACTION (IMPORTANT) ================= */
 
-    await prisma.deflashingProcessLog.create({
-      data: {
-        deflashingId: id,
-        batchNo: record.batchNo,
-        qtyOut,
-        ngQty,
-        spareQty: 0,
-        processedBy
+    const result = await prisma.$transaction(async (tx) => {
+
+      // ✅ 1. SAVE PROCESS LOG (SELALU, termasuk parsial)
+      await tx.deflashingProcessLog.create({
+        data: {
+          deflashingId: id,
+          batchNo: record.batchNo,
+          qtyOut,
+          ngQty,
+          spareQty: 0,
+          processedBy,
+          processedAt: new Date()
+        }
+      })
+
+      // ✅ 2. UPDATE MAIN TABLE
+      const updated = await tx.deflashing.update({
+        where: { id },
+        data: {
+          processedQty: newProcessedQty,
+          processedBy,
+          status: isFinished ? 'DONE' : 'PENDING',
+          completedAt: isFinished ? new Date() : null
+        }
+      })
+
+      // ✅ 3. CREATE QC QUEUE (hanya jika ada OK)
+      if (qtyOut > 0) {
+        await tx.afterOQCTransaction.create({
+          data: {
+            computerCode: record.computerCode,
+            partNo: record.partNo,
+            productName: record.productName,
+            batch: record.batchNo,
+
+            beforeQty: qtyOut,
+
+            afterQty: 0,
+            ngQty: 0,
+            spareQty: 0,
+
+            status: 'PENDING',
+            source: 'DEFLASHING',
+            responsiblePerson: processedBy
+          }
+        })
       }
+
+      return updated
     })
 
-    /* ================= UPDATE DEFLASHING ================= */
-
-    const updated = await prisma.deflashing.update({
-      where: { id },
-      data: {
-        processedQty: newProcessedQty,
-        processedBy,
-        status: isFinished ? 'DONE' : 'PENDING',
-        completedAt: isFinished ? new Date() : null
-      }
-    })
-
-    /* ================= CREATE QC QUEUE ================= */
-
-if (qtyOut > 0) {
-  await prisma.afterOQCTransaction.create({
-    data: {
-      computerCode: record.computerCode,
-      partNo: record.partNo,
-      productName: record.productName,
-      batch: record.batchNo,
-
-      beforeQty: qtyOut,
-
-      afterQty: 0,
-      ngQty: 0,
-      spareQty: 0,
-
-      status: 'PENDING',
-      source: 'DEFLASHING',
-      responsiblePerson: processedBy
-    }
-  })
-}
-
-    return NextResponse.json(updated)
+    return NextResponse.json(result)
 
   } catch (error) {
     console.error('[PROCESS DEFLASHING ERROR]', error)

@@ -56,15 +56,14 @@ export default function DeflashingPage() {
   }, [pending, searchQueue])
 
   const filteredHistory = useMemo(() => {
-    return done.filter(log =>
-      log.computerCode?.toLowerCase().includes(searchHistory.toLowerCase()) ||
-      log.batchNo?.toLowerCase().includes(searchHistory.toLowerCase()) ||
-      log.partNo?.toLowerCase().includes(searchHistory.toLowerCase()) ||
-      log.productName?.toLowerCase().includes(searchHistory.toLowerCase()) ||
-      log.processedBy?.toLowerCase().includes(searchHistory.toLowerCase())
-    )
-  }, [done, searchHistory])
-
+  return done.filter(log =>
+    log.deflashing?.computerCode?.toLowerCase().includes(searchHistory.toLowerCase()) ||
+    log.deflashing?.partNo?.toLowerCase().includes(searchHistory.toLowerCase()) ||
+    log.deflashing?.productName?.toLowerCase().includes(searchHistory.toLowerCase()) ||
+    log.batchNo?.toLowerCase().includes(searchHistory.toLowerCase()) ||
+    log.processedBy?.toLowerCase().includes(searchHistory.toLowerCase())
+  )
+}, [done, searchHistory])
   // ================= PAGINATION =================
 
   const paginatedQueue = useMemo(() => {
@@ -279,24 +278,39 @@ export default function DeflashingPage() {
                 return (
                   <tr key={log.id} className="border-b hover:bg-slate-50 text-center">
 
-                    <td>{date.toLocaleDateString()}</td>
-                    <td className="text-xs text-slate-500">
-                      {date.toLocaleTimeString()}
-                    </td>
+  <td>{date.toLocaleDateString()}</td>
 
-                    <td className="font-mono text-blue-600">
-                      {log.computerCode}
-                    </td>
+  <td className="text-xs text-slate-500">
+    {date.toLocaleTimeString()}
+  </td>
 
-                    <td>{log.partNo}</td>
-                    <td>{log.productName}</td>
+  <td className="font-mono text-blue-600">
+    {log.deflashing?.computerCode}
+  </td>
 
-                    <td>{log.batchNo ?? '-'}</td>
+  <td>
+    {log.deflashing?.partNo}
+  </td>
 
-                    <td className="text-green-600 font-bold">{ok}</td>
-                    <td className="text-red-600 font-bold">{ng}</td>
+  <td>
+    {log.deflashing?.productName}
+  </td>
 
-                    <td className="font-semibold">{total}</td>
+  <td>
+    {log.batchNo ?? '-'}
+  </td>
+
+  <td className="text-green-600 font-bold">
+    {ok}
+  </td>
+
+  <td className="text-red-600 font-bold">
+    {ng}
+  </td>
+
+  <td className="font-semibold">
+    {total}
+  </td>
 
                     <td>
                       <span className={`px-2 py-1 rounded text-xs font-semibold

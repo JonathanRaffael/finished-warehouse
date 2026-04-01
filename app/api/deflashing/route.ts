@@ -5,23 +5,25 @@ import { prisma } from '@/lib/prisma'
 export async function GET() {
   try {
 
-    // 🔹 Queue
+    // 🔹 QUEUE (tetap sama)
     const pending = await prisma.deflashing.findMany({
       where: { status: 'PENDING' },
-      orderBy: { createdAt: 'asc' },
-      include: {
-        logs: true
-      }
+      orderBy: { createdAt: 'asc' }
     })
 
-    // 🔹 History
-    const done = await prisma.deflashing.findMany({
-      where: { status: 'DONE' },
-      orderBy: { completedAt: 'desc' },
+    // 🔥 HISTORY (UBAH TOTAL)
+    const done = await prisma.deflashingProcessLog.findMany({
+      orderBy: {
+        processedAt: 'desc'
+      },
       include: {
-        logs: {
-          orderBy: {
-            processedAt: 'asc'
+        deflashing: {
+          select: {
+            computerCode: true,
+            partNo: true,
+            productName: true,
+            batchNo: true,
+            qtyIn: true
           }
         }
       }
@@ -34,6 +36,7 @@ export async function GET() {
 
   } catch (error) {
     console.error('[GET DEFLASHING ERROR]', error)
+
     return NextResponse.json(
       { message: 'Failed to fetch deflashing data' },
       { status: 500 }
