@@ -23,6 +23,9 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
 
+    // 🔥 FIX: HARUS SAMA DENGAN DATABASE
+    let source: 'INCOMING' | 'DEFLASHING' = 'INCOMING'
+
     const {
       id,
       computerCode,
@@ -47,6 +50,8 @@ export async function POST(req: NextRequest) {
 
     if (!id) {
 
+      source = 'INCOMING' // 🔥 FIX
+
       const remaining = (Number(beforeQty) || 0) - finalAfter
       const safeRemaining = Math.max(remaining, 0)
 
@@ -57,10 +62,8 @@ export async function POST(req: NextRequest) {
           productName: String(productName),
           batch: batch ? String(batch).trim() : null,
 
-          // 🔥 beforeQty = remaining
           beforeQty: safeRemaining,
 
-          // 🔥 langsung set (karena baru create)
           afterQty: finalAfter,
           ngQty: finalNg,
           spareQty: finalSpare,
@@ -69,7 +72,9 @@ export async function POST(req: NextRequest) {
 
           status: safeRemaining <= 0 ? 'DONE' : 'PENDING',
 
-          incomingId: null
+          incomingId: null,
+
+          source // ✅ FIX (UPPERCASE)
         }
       })
 
@@ -106,15 +111,19 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // 🔥 VALIDASI: tidak boleh melebihi remaining
+    // 🔥 FIX: DETECT SOURCE DENGAN UPPERCASE
+    if (existing.incomingId) {
+      source = 'INCOMING'
+    } else {
+      source = 'DEFLASHING'
+    }
+
     if (finalAfter > existing.beforeQty) {
       return NextResponse.json(
         { message: 'OK qty exceeds remaining' },
         { status: 400 }
       )
     }
-
-    /* ================= CALCULATE ================= */
 
     const remaining = existing.beforeQty - finalAfter
     const safeRemaining = Math.max(remaining, 0)
@@ -140,10 +149,8 @@ export async function POST(req: NextRequest) {
     await prisma.afterOQCTransaction.update({
       where: { id },
       data: {
-        // 🔥 UPDATE REMAINING
         beforeQty: safeRemaining,
 
-        // 🔥 AKUMULASI (INI FIX UTAMA)
         afterQty: {
           increment: finalAfter
         },
@@ -155,7 +162,9 @@ export async function POST(req: NextRequest) {
         },
 
         responsiblePerson,
-        status
+        status,
+
+        source // ✅ FIX (UPPERCASE)
       }
     })
 

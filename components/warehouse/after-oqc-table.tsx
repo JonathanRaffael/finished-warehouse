@@ -18,6 +18,7 @@ interface Transaction {
     partNo: string
     productName: string
     batch?: number | string
+    source?: 'INCOMING' | 'DEFLASHING'
     incoming?: {
       batch?: number
     }
@@ -26,15 +27,20 @@ interface Transaction {
 
 interface Props {
   transactions: Transaction[]
+  title?: string
 }
 
-export function AfterOQCTable({ transactions }: Props) {
+export function AfterOQCTable({ transactions, title }: Props) {
 
   const [search, setSearch] = useState('')
   const [open, setOpen] = useState<string | null>(null)
   const [page, setPage] = useState(1)
 
   const limit = 10
+
+  /* ================= HELPER ================= */
+
+  const getSource = (s?: string) => (s || 'INCOMING').toUpperCase()
 
   /* ================= SORT ================= */
 
@@ -49,27 +55,28 @@ export function AfterOQCTable({ transactions }: Props) {
   const grouped = Object.values(
     sortedTransactions.reduce((acc: any, row) => {
 
-      const queueId = row.afterOQC.id
+      const source = getSource(row.afterOQC.source)
 
       const batchValue =
         row.afterOQC.batch ??
         row.afterOQC.incoming?.batch ??
         '-'
 
-      if (!acc[queueId]) {
+      const queueId = `${row.afterOQC.id}-${source}-${batchValue}`
 
+      if (!acc[queueId]) {
         acc[queueId] = {
           id: queueId,
           computerCode: row.afterOQC.computerCode,
           partNo: row.afterOQC.partNo,
           productName: row.afterOQC.productName,
           batch: batchValue,
+          source,
           history: [],
           after: 0,
           ng: 0,
           spare: 0
         }
-
       }
 
       acc[queueId].history.push(row)
@@ -118,7 +125,7 @@ export function AfterOQCTable({ transactions }: Props) {
       <div className="flex items-center justify-between">
 
         <h2 className="text-xl font-bold">
-          📦 QC History
+          {title || 'QC History'}
         </h2>
 
         <Input
@@ -142,17 +149,16 @@ export function AfterOQCTable({ transactions }: Props) {
           <thead className="bg-slate-100">
 
             <tr className="text-center">
-
               <th className="py-3 px-4">CODE</th>
               <th className="px-4">PART</th>
               <th className="px-4">PRODUCT</th>
               <th className="px-4">BATCH</th>
+              <th className="px-4">SOURCE</th>
               <th className="px-4">IN</th>
               <th className="px-4">OK</th>
               <th className="px-4">NG</th>
-              <th className="px-4">SPARE</th>
+              <th className="px-4">BUFFER</th>
               <th className="px-4">STOCK</th>
-
             </tr>
 
           </thead>
@@ -162,7 +168,7 @@ export function AfterOQCTable({ transactions }: Props) {
             {paginated.length === 0 ? (
 
               <tr>
-                <td colSpan={9} className="text-center py-10 text-slate-400">
+                <td colSpan={10} className="text-center py-10 text-slate-400">
                   No QC history
                 </td>
               </tr>
@@ -172,12 +178,13 @@ export function AfterOQCTable({ transactions }: Props) {
               paginated.map((row: any) => {
 
                 const totalIn = row.after + row.ng + row.spare
+                const isDeflashing = row.source === 'DEFLASHING'
 
                 return (
 
                   <Fragment key={row.id}>
 
-                    <tr className="border-b hover:bg-slate-50 text-center">
+                    <tr className={`border-b text-center hover:bg-slate-50 ${isDeflashing ? 'bg-orange-50' : ''}`}>
 
                       <td className="px-4 py-2 font-mono text-blue-600">
                         {row.computerCode}
@@ -193,6 +200,10 @@ export function AfterOQCTable({ transactions }: Props) {
 
                       <td className="px-4 py-2 font-semibold text-purple-600">
                         {row.batch}
+                      </td>
+
+                      <td className="px-4 py-2 text-xs">
+                        {isDeflashing ? '🔧 DEFLASHING' : '📦 INCOMING'}
                       </td>
 
                       <td className="px-4 py-2">
@@ -226,7 +237,7 @@ export function AfterOQCTable({ transactions }: Props) {
 
                       <tr>
 
-                        <td colSpan={9} className="bg-slate-50 px-8 py-4">
+                        <td colSpan={10} className="bg-slate-50 px-8 py-4">
 
                           <p className="font-semibold mb-3 text-slate-600">
                             Inspection History
@@ -241,7 +252,7 @@ export function AfterOQCTable({ transactions }: Props) {
                                 <th className="border px-3 py-2">IN</th>
                                 <th className="border px-3 py-2">OK</th>
                                 <th className="border px-3 py-2">NG</th>
-                                <th className="border px-3 py-2">SPARE</th>
+                                <th className="border px-3 py-2">BUFFER</th>
                                 <th className="border px-3 py-2">QC BY</th>
                               </tr>
 
@@ -338,7 +349,5 @@ export function AfterOQCTable({ transactions }: Props) {
       </div>
 
     </Card>
-
   )
-
 }

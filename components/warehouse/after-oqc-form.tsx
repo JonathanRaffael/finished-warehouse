@@ -8,6 +8,7 @@ import { useToast } from '@/hooks/use-toast'
 
 interface AfterOQCFormProps {
   onSuccess: () => void
+  sourceType?: 'incoming' | 'deflashing' | null
   selectedQueue?: {
     id: string
     computerCode: string
@@ -18,7 +19,7 @@ interface AfterOQCFormProps {
   } | null
 }
 
-export function AfterOQCForm({ onSuccess, selectedQueue }: AfterOQCFormProps) {
+export function AfterOQCForm({ onSuccess, selectedQueue, sourceType }: AfterOQCFormProps) {
 
   const { toast } = useToast()
 
@@ -36,13 +37,19 @@ export function AfterOQCForm({ onSuccess, selectedQueue }: AfterOQCFormProps) {
 
   const [before, setBefore] = useState(0)
 
-  // 🔥 FIX: pakai string
   const [ok, setOk] = useState<string>('0')
   const [ng, setNg] = useState<string>('0')
   const [spare, setSpare] = useState<string>('0')
 
   const [responsiblePerson, setResponsiblePerson] = useState('')
   const [loading, setLoading] = useState(false)
+
+  /* ================= DYNAMIC LABEL ================= */
+
+  const spareLabel =
+  sourceType === 'deflashing'
+    ? 'SparePack'
+    : 'Buffer'
 
   /* ================= CONVERT NUMBER ================= */
 
@@ -145,18 +152,22 @@ export function AfterOQCForm({ onSuccess, selectedQueue }: AfterOQCFormProps) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          id: selectedQueue?.id || null,
-          computerCode,
-          partNo,
-          productName,
-          batch,
-          beforeQty: before,
-          afterQty: okNumber,
-          ngQty: ngNumber,
-          spareQty: spareNumber,
-          finalStock,
-          responsiblePerson
-        })
+  id: selectedQueue?.id || null,
+  computerCode,
+  partNo,
+  productName,
+  batch,
+  beforeQty: before,
+  afterQty: okNumber,
+  ngQty: ngNumber,
+  spareQty: spareNumber,
+  finalStock,
+  responsiblePerson,
+  source:
+    sourceType === 'deflashing'
+      ? 'deflashing'
+      : 'incoming'
+})
       })
 
       if (!res.ok) throw new Error()
@@ -277,7 +288,7 @@ export function AfterOQCForm({ onSuccess, selectedQueue }: AfterOQCFormProps) {
         </div>
 
         <div>
-          <label className="text-xs text-slate-500">Spare</label>
+          <label className="text-xs text-slate-500">{spareLabel}</label>
           <Input
             type="number"
             value={spare}
@@ -328,7 +339,9 @@ export function AfterOQCForm({ onSuccess, selectedQueue }: AfterOQCFormProps) {
 
       <div className="flex justify-between items-center bg-slate-100 rounded px-4 py-3">
 
-        <span className="text-sm">Final Stock (OK + Spare)</span>
+        <span className="text-sm">
+          Final Stock (OK + {spareLabel})
+        </span>
 
         <span className="font-bold text-blue-600">
           {finalStock}

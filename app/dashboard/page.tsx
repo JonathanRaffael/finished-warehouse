@@ -260,7 +260,7 @@ export default function DashboardPage() {
 
               <tr>
                 {[
-                  'CODE','PART','PRODUCT','PROD','LOC',
+                  'COMPUTER CODE','PART NO','PRODUCT','PROD','LOC',
                   'INITIAL','IN','BEFORE OQC','AFTER OQC',
                   'DEFLASH','OUT','FINAL','WH STOCK'
                 ].map((h)=>(
@@ -359,7 +359,7 @@ export default function DashboardPage() {
                       <td className="px-3 py-2 tabular-nums font-bold bg-green-100">
                         {format(r.finalStock)}
                         <p className="text-[10px] text-slate-500">
-                          incl. QC + Incoming
+                         
                         </p>
                       </td>
 
