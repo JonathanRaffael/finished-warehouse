@@ -25,6 +25,7 @@ const menuByRole = {
       title: 'MAIN',
       items: [
         { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+        { label: 'WIP Dashboard', href: '/dashboard/wip', icon: LayoutDashboard }
       ],
     },
     {
@@ -182,7 +183,10 @@ export function Sidebar() {
 
               <div className="space-y-1">
                 {section.items.map(item => {
-                  const isActive = pathname === item.href;
+                  const isActive =
+  item.href === "/dashboard"
+    ? pathname === "/dashboard"
+    : pathname === item.href || pathname.startsWith(item.href + "/");
                   const Icon = item.icon;
 
                   return (
