@@ -28,6 +28,10 @@ enum DeflashingStatus {
   PENDING
   DONE
 }
+enum WipProductionType {
+  HT
+  HK
+}
 
 //
 // USER
@@ -243,4 +247,91 @@ model DeflashingProcessLog {
 
   @@index([deflashingId])
   @@index([batchNo])
+}
+
+//
+// WIP PRODUCT MASTER
+//
+model WipProduct {
+  id           String @id @default(cuid())
+
+  computerCode String @unique @db.VarChar(50)
+  partNo       String @db.VarChar(50)
+  productName  String @db.VarChar(255)
+
+  type         WipProductionType @default(HT)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // ✅ FIX DI SINI
+  stock     WipStock?
+  incomings WipIncoming[]
+  outgoings WipOutgoing[]
+
+  @@index([type])
+}
+
+//
+// WIP STOCK (INI YANG JADI TABEL EXCEL LU 🔥)
+//
+model WipStock {
+  id String @id @default(cuid())
+
+  productId String @unique
+  product   WipProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  initialStock Int @default(0)
+  incomingQty  Int @default(0)
+  outgoingQty  Int @default(0)
+  finalStock   Int @default(0)
+
+  updatedAt DateTime @updatedAt
+
+  @@index([productId])
+}
+
+//
+// WIP INCOMING
+//
+model WipIncoming {
+  id String @id @default(cuid())
+
+  date DateTime @default(now())
+
+  productId String
+  product   WipProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  qty Int
+
+  createdBy String        // Responsible Person
+  ipqc      String?       // IPQC PIC ✅
+  remark    String?       // Remark ✅
+
+  createdAt DateTime @default(now())
+
+  @@index([productId])
+  @@index([date])
+}
+
+//
+// WIP OUTGOING
+//
+model WipOutgoing {
+  id String @id @default(cuid())
+
+  date DateTime @default(now())
+
+  productId String
+  product   WipProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  qty Int
+
+  remark String?
+  createdBy String
+
+  createdAt DateTime @default(now())
+
+  @@index([productId])
+  @@index([date])
 }
