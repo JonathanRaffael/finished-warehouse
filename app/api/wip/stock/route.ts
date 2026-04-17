@@ -17,7 +17,7 @@ export async function GET(req: Request) {
         product: true,
       },
       orderBy: {
-        updatedAt: "desc",
+        updatedAt: "asc",
       },
     });
 

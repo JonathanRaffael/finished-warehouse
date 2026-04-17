@@ -32,13 +32,19 @@ export default function ProductTable({ type }: { type: "HT" | "HK" }) {
   }, [type]);
 
   const filteredData = useMemo(() => {
-    return data.filter((item) =>
+  return data
+    .filter((item) =>
       [item.product.productName, item.product.partNo, item.product.computerCode]
         .join(" ")
         .toLowerCase()
         .includes(search.toLowerCase())
+    )
+    .sort(
+      (a, b) =>
+        new Date(a.createdAt).getTime() -
+        new Date(b.createdAt).getTime()
     );
-  }, [data, search]);
+}, [data, search]);
 
   const handleSubmit = async () => {
     if (!form.computerCode || !form.partNo || !form.productName) {

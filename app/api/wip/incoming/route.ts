@@ -1,23 +1,60 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+// =====================
+// GET INCOMING
+// =====================
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
+
     const type = searchParams.get("type");
+    const search = searchParams.get("search")?.trim() || "";
+    const limit = Number(searchParams.get("limit")) || 100;
+
+    if (!type) {
+      return NextResponse.json(
+        { error: "Type is required!" },
+        { status: 400 }
+      );
+    }
 
     const data = await prisma.wipIncoming.findMany({
       where: {
         product: {
           type: type as any,
+          ...(search && {
+            OR: [
+              {
+                productName: {
+                  contains: search,
+                  mode: "insensitive",
+                },
+              },
+              {
+                partNo: {
+                  contains: search,
+                  mode: "insensitive",
+                },
+              },
+              {
+                computerCode: {
+                  contains: search,
+                  mode: "insensitive",
+                },
+              },
+            ],
+          }),
         },
       },
       include: {
         product: true,
       },
-      orderBy: {
-        date: "desc",
-      },
+      orderBy: [
+        { date: "asc" },        // utama
+        { createdAt: "asc" },   // backup biar stabil 🔥
+      ],
+      take: limit,
     });
 
     return NextResponse.json(data);
@@ -31,23 +68,54 @@ export async function GET(req: Request) {
   }
 }
 
+
+// =====================
+// POST INCOMING
+// =====================
 export async function POST(req: Request) {
   try {
     const body = await req.json();
 
-    // 🔍 VALIDASI
-    if (!body.computerCode || !body.qty || !body.createdBy) {
+    const computerCode = body.computerCode?.trim();
+    const createdBy = body.createdBy?.trim();
+    const ipqc = body.ipqc?.trim();
+    const remark = body.remark?.trim();
+    const type = body.type;
+    const date = body.date;
+
+    const parsedQty = Number(body.qty);
+
+    // =====================
+    // VALIDASI
+    // =====================
+    if (!computerCode || !createdBy || !parsedQty || !type) {
       return NextResponse.json(
         { error: "Data tidak lengkap!" },
         { status: 400 }
       );
     }
 
-    const qty = Number(body.qty);
+    if (isNaN(parsedQty) || parsedQty <= 0) {
+      return NextResponse.json(
+        { error: "Qty harus lebih dari 0!" },
+        { status: 400 }
+      );
+    }
 
-    // 🔍 CARI PRODUCT
-    const product = await prisma.wipProduct.findUnique({
-      where: { computerCode: body.computerCode },
+    // =====================
+    // CARI PRODUCT (PRIORITAS TERBARU 🔥)
+    // =====================
+    const product = await prisma.wipProduct.findFirst({
+      where: {
+        computerCode: {
+          equals: computerCode,
+          mode: "insensitive",
+        },
+        type: type,
+      },
+      orderBy: {
+        createdAt: "desc", // 🔥 ambil yang paling baru
+      },
     });
 
     if (!product) {
@@ -57,47 +125,56 @@ export async function POST(req: Request) {
       );
     }
 
-    // 🔥 INSERT INCOMING
-    const incoming = await prisma.wipIncoming.create({
-      data: {
-        productId: product.id,
-        qty: qty,
-        createdBy: body.createdBy,
-        ipqc: body.ipqc || null,
-        remark: body.remark || null,
-      },
+    // =====================
+    // TRANSACTION
+    // =====================
+    const result = await prisma.$transaction(async (tx) => {
+
+      // INSERT INCOMING
+      const incoming = await tx.wipIncoming.create({
+        data: {
+          productId: product.id,
+          qty: parsedQty,
+          createdBy,
+          ipqc: ipqc || null,
+          remark: remark || null,
+          date: date ? new Date(date) : new Date(),
+        },
+      });
+
+      // AMBIL STOCK
+      const stock = await tx.wipStock.findUnique({
+        where: { productId: product.id },
+      });
+
+      const initial = stock?.initialStock || 0;
+      const currentIncoming = stock?.incomingQty || 0;
+      const currentOutgoing = stock?.outgoingQty || 0;
+
+      // HITUNG ULANG
+      const newIncoming = currentIncoming + parsedQty;
+      const newFinal = initial + newIncoming - currentOutgoing;
+
+      // UPSERT STOCK
+      await tx.wipStock.upsert({
+        where: { productId: product.id },
+        update: {
+          incomingQty: newIncoming,
+          finalStock: newFinal,
+        },
+        create: {
+          productId: product.id,
+          initialStock: 0,
+          incomingQty: parsedQty,
+          outgoingQty: 0,
+          finalStock: parsedQty,
+        },
+      });
+
+      return incoming;
     });
 
-    // 🔥 AMBIL STOCK LAMA
-    const stock = await prisma.wipStock.findUnique({
-      where: { productId: product.id },
-    });
-
-    const initial = stock?.initialStock || 0;
-    const currentIncoming = stock?.incomingQty || 0;
-    const currentOutgoing = stock?.outgoingQty || 0;
-
-    // 🔥 HITUNG ULANG (INI KUNCI)
-    const newIncoming = currentIncoming + qty;
-    const newFinal = initial + newIncoming - currentOutgoing;
-
-    // 🔥 UPDATE STOCK (NO MORE INCREMENT FINAL)
-    await prisma.wipStock.upsert({
-      where: { productId: product.id },
-      update: {
-        incomingQty: newIncoming,
-        finalStock: newFinal,
-      },
-      create: {
-        productId: product.id,
-        initialStock: 0,
-        incomingQty: qty,
-        outgoingQty: 0,
-        finalStock: qty,
-      },
-    });
-
-    return NextResponse.json(incoming);
+    return NextResponse.json(result);
 
   } catch (error) {
     console.error("POST INCOMING ERROR:", error);

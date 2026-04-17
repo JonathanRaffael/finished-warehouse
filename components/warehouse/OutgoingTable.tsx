@@ -19,6 +19,7 @@ type Product = {
   computerCode: string;
   partNo: string;
   productName: string;
+  createdAt?: string;
 };
 
 export default function OutgoingTable({ type }: { type: "HT" | "HK" }) {
@@ -33,9 +34,12 @@ export default function OutgoingTable({ type }: { type: "HT" | "HK" }) {
     computerCode: "",
     qty: 0,
     createdBy: "",
+    date: new Date().toISOString().split("T")[0],
   });
 
-  // 🔥 FETCH DATA
+  // =====================
+  // FETCH DATA
+  // =====================
   const fetchData = () => {
     setLoading(true);
 
@@ -45,11 +49,20 @@ export default function OutgoingTable({ type }: { type: "HT" | "HK" }) {
       .finally(() => setLoading(false));
   };
 
-  // 🔥 FETCH PRODUCT
-  const fetchProducts = () => {
-    fetch(`/api/wip/product?type=${type}`)
-      .then((res) => res.json())
-      .then((res) => setProducts(res));
+  // =====================
+  // FETCH PRODUCT (SORT TERBARU)
+  // =====================
+  const fetchProducts = async () => {
+    const res = await fetch(`/api/wip/product?type=${type}`);
+    const data = await res.json();
+
+    const sorted = data.sort(
+      (a: Product, b: Product) =>
+        new Date(b.createdAt || "").getTime() -
+        new Date(a.createdAt || "").getTime()
+    );
+
+    setProducts(sorted);
   };
 
   useEffect(() => {
@@ -57,23 +70,39 @@ export default function OutgoingTable({ type }: { type: "HT" | "HK" }) {
     fetchProducts();
   }, [type]);
 
+  // =====================
+  // FILTER + SORT TABLE
+  // =====================
   const filteredData = useMemo(() => {
-    return data.filter((item) =>
-      [
-        item.product.productName,
-        item.product.partNo,
-        item.product.computerCode,
-        item.createdBy,
-      ]
-        .join(" ")
-        .toLowerCase()
-        .includes(search.toLowerCase())
-    );
+    return data
+      .filter((item) =>
+        [
+          item.product.productName,
+          item.product.partNo,
+          item.product.computerCode,
+          item.createdBy,
+        ]
+          .join(" ")
+          .toLowerCase()
+          .includes(search.toLowerCase())
+      )
+      .sort(
+        (a, b) =>
+          new Date(a.date).getTime() - new Date(b.date).getTime()
+      ); // 🔥 lama → baru
   }, [data, search]);
 
+  // =====================
+  // SUBMIT
+  // =====================
   const handleSubmit = async () => {
     if (!form.computerCode || !form.qty || !form.createdBy) {
       alert("Lengkapi data!");
+      return;
+    }
+
+    if (!form.productId) {
+      alert("Computer Code tidak valid / produk tidak ditemukan!");
       return;
     }
 
@@ -86,6 +115,7 @@ export default function OutgoingTable({ type }: { type: "HT" | "HK" }) {
         computerCode: form.computerCode,
         qty: form.qty,
         createdBy: form.createdBy,
+        date: form.date,
         type,
       }),
     });
@@ -103,6 +133,7 @@ export default function OutgoingTable({ type }: { type: "HT" | "HK" }) {
       computerCode: "",
       qty: 0,
       createdBy: "",
+      date: new Date().toISOString().split("T")[0],
     });
 
     fetchData();
@@ -111,7 +142,7 @@ export default function OutgoingTable({ type }: { type: "HT" | "HK" }) {
   return (
     <div className="space-y-5">
 
-      {/* 🔷 HEADER */}
+      {/* HEADER */}
       <div className="px-4 pt-4 pb-2 flex items-center justify-between">
         <div>
           <h2 className="text-lg font-semibold">
@@ -130,7 +161,7 @@ export default function OutgoingTable({ type }: { type: "HT" | "HK" }) {
         </button>
       </div>
 
-      {/* 🔍 SEARCH */}
+      {/* SEARCH */}
       <div className="flex items-center gap-3">
         <input
           placeholder="Search product, code, responsible..."
@@ -140,7 +171,7 @@ export default function OutgoingTable({ type }: { type: "HT" | "HK" }) {
         />
       </div>
 
-      {/* 📊 TABLE */}
+      {/* TABLE */}
       <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 border-b text-slate-600">
@@ -175,12 +206,9 @@ export default function OutgoingTable({ type }: { type: "HT" | "HK" }) {
               </tr>
             ) : (
               filteredData.map((item) => (
-                <tr
-                  key={item.id}
-                  className="border-b hover:bg-slate-50 transition"
-                >
+                <tr key={item.id} className="border-b hover:bg-slate-50 transition">
                   <td className="px-4 py-3">
-                    {new Date(item.date).toLocaleDateString()}
+                    {new Date(item.date).toLocaleDateString("id-ID")}
                   </td>
 
                   <td className="px-4 py-3 font-mono text-blue-600">
@@ -209,7 +237,7 @@ export default function OutgoingTable({ type }: { type: "HT" | "HK" }) {
         </table>
       </div>
 
-      {/* 🧾 MODAL */}
+      {/* MODAL */}
       {showForm && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl p-6 w-[420px] space-y-5 shadow-xl">
@@ -223,36 +251,74 @@ export default function OutgoingTable({ type }: { type: "HT" | "HK" }) {
 
             <div className="space-y-4">
 
-              {/* 🔥 SELECT PRODUCT */}
-              <select
-                className="border px-3 py-2 w-full rounded-lg"
-                value={form.productId}
-                onChange={(e) => {
-                  const selected = products.find(
-                    (p) => p.id === e.target.value
-                  );
-
-                  setForm({
-                    ...form,
-                    productId: e.target.value,
-                    computerCode: selected?.computerCode || "",
-                  });
-                }}
-              >
-                <option value="">Select Product</option>
-                {products.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.productName} - {p.partNo} [{p.computerCode}]
-                  </option>
-                ))}
-              </select>
-
-              {/* AUTO CODE */}
+              {/* DATE */}
               <input
-                disabled
-                value={form.computerCode}
-                className="border px-3 py-2 w-full rounded-lg bg-slate-100"
+                type="date"
+                className="border px-3 py-2 w-full rounded-lg"
+                value={form.date}
+                onChange={(e) =>
+                  setForm({ ...form, date: e.target.value })
+                }
               />
+
+              {/* COMPUTER CODE INPUT */}
+              <div className="space-y-1">
+                <input
+                  placeholder="Type Computer Code (e.g: ABC123...)"
+                  className="border px-3 py-2 w-full rounded-lg"
+                  value={form.computerCode}
+                  onChange={(e) => {
+                    const code = e.target.value;
+
+                    const found = products.find((p) =>
+                      p.computerCode
+                        .toLowerCase()
+                        .startsWith(code.toLowerCase())
+                    );
+
+                    setForm({
+                      ...form,
+                      computerCode: code,
+                      productId: found?.id || "",
+                    });
+                  }}
+                />
+
+                <p className="text-xs text-slate-500">
+                  Ketik computer code produk, sistem akan otomatis mengisi data produk.
+                </p>
+              </div>
+
+              {/* AUTO INFO */}
+              <div className="bg-slate-50 border rounded-lg p-3 text-sm">
+                {form.productId ? (
+                  (() => {
+                    const selected = products.find(
+                      (p) => p.id === form.productId
+                    );
+                    return (
+                      <div className="space-y-1">
+                        <p>
+                          <span className="text-slate-500">Part No:</span>{" "}
+                          <span className="font-medium">
+                            {selected?.partNo}
+                          </span>
+                        </p>
+                        <p>
+                          <span className="text-slate-500">Product:</span>{" "}
+                          <span className="font-medium">
+                            {selected?.productName}
+                          </span>
+                        </p>
+                      </div>
+                    );
+                  })()
+                ) : (
+                  <p className="text-red-500 text-xs">
+                    Product tidak ditemukan. Pastikan computer code benar.
+                  </p>
+                )}
+              </div>
 
               <input
                 type="number"
