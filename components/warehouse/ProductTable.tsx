@@ -41,8 +41,8 @@ export default function ProductTable({ type }: { type: "HT" | "HK" }) {
     )
     .sort(
       (a, b) =>
-        new Date(a.createdAt).getTime() -
-        new Date(b.createdAt).getTime()
+        new Date(a.product?.createdAt || 0).getTime() -
+        new Date(b.product?.createdAt || 0).getTime()
     );
 }, [data, search]);
 

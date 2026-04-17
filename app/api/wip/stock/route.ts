@@ -6,7 +6,13 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const type = searchParams.get("type");
 
-    // 🔥 GET STOCK + PRODUCT
+    if (!type) {
+      return NextResponse.json(
+        { error: "Type is required!" },
+        { status: 400 }
+      );
+    }
+
     const stocks = await prisma.wipStock.findMany({
       where: {
         product: {
@@ -17,11 +23,12 @@ export async function GET(req: Request) {
         product: true,
       },
       orderBy: {
-        updatedAt: "asc",
+        product: {
+          createdAt: "asc", // 🔥 FIX utama
+        },
       },
     });
 
-    // 🔥 HITUNG ULANG FINAL STOCK (INI KUNCI)
     const result = stocks.map((item) => {
       const initial = item.initialStock || 0;
       const incoming = item.incomingQty || 0;
@@ -31,7 +38,7 @@ export async function GET(req: Request) {
 
       return {
         ...item,
-        finalStock: final, // override hasil DB
+        finalStock: final,
       };
     });
 

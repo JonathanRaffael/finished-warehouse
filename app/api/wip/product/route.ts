@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
 // =====================
-// GET PRODUCT (SEARCH READY 🔥)
+// GET PRODUCT
 // =====================
 export async function GET(req: Request) {
   try {
@@ -11,6 +11,7 @@ export async function GET(req: Request) {
     const type = searchParams.get("type");
     const search = searchParams.get("search") || "";
     const limit = Number(searchParams.get("limit")) || 20;
+    const sort = searchParams.get("sort") || "asc"; // 🔥 dynamic
 
     if (!type) {
       return NextResponse.json(
@@ -22,29 +23,31 @@ export async function GET(req: Request) {
     const products = await prisma.wipProduct.findMany({
       where: {
         type: type as any,
-        OR: [
-          {
-            computerCode: {
-              contains: search,
-              mode: "insensitive",
+        ...(search && {
+          OR: [
+            {
+              computerCode: {
+                contains: search,
+                mode: "insensitive",
+              },
             },
-          },
-          {
-            partNo: {
-              contains: search,
-              mode: "insensitive",
+            {
+              partNo: {
+                contains: search,
+                mode: "insensitive",
+              },
             },
-          },
-          {
-            productName: {
-              contains: search,
-              mode: "insensitive",
+            {
+              productName: {
+                contains: search,
+                mode: "insensitive",
+              },
             },
-          },
-        ],
+          ],
+        }),
       },
       orderBy: {
-        computerCode: "asc",
+        createdAt: sort === "desc" ? "desc" : "asc", // 🔥 fleksibel
       },
       take: limit,
     });
@@ -74,7 +77,9 @@ export async function POST(req: Request) {
     const type = body.type;
     const initialStock = Number(body.initialStock) || 0;
 
-    // 🔍 VALIDASI
+    // =====================
+    // VALIDASI
+    // =====================
     if (!computerCode || !partNo || !productName || !type) {
       return NextResponse.json(
         { error: "Data tidak lengkap!" },
@@ -82,13 +87,23 @@ export async function POST(req: Request) {
       );
     }
 
-    // 🔍 CEK DUPLIKAT (CASE INSENSITIVE 🔥)
+    if (initialStock < 0) {
+      return NextResponse.json(
+        { error: "Initial stock tidak boleh negatif!" },
+        { status: 400 }
+      );
+    }
+
+    // =====================
+    // CEK DUPLIKAT (CASE INSENSITIVE)
+    // =====================
     const existing = await prisma.wipProduct.findFirst({
       where: {
         computerCode: {
           equals: computerCode,
           mode: "insensitive",
         },
+        type: type, // 🔥 penting (biar HT & HK bisa beda)
       },
     });
 
@@ -100,10 +115,11 @@ export async function POST(req: Request) {
     }
 
     // =====================
-    // TRANSACTION 🔥
+    // TRANSACTION
     // =====================
     const result = await prisma.$transaction(async (tx) => {
 
+      // CREATE PRODUCT
       const product = await tx.wipProduct.create({
         data: {
           computerCode,
@@ -113,6 +129,7 @@ export async function POST(req: Request) {
         },
       });
 
+      // CREATE STOCK
       await tx.wipStock.create({
         data: {
           productId: product.id,
