@@ -2,12 +2,18 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 // =====================
-// GET OUTGOING
+// GET OUTGOING (UPDATED 🔥)
 // =====================
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
+
     const type = searchParams.get("type");
+    const search = searchParams.get("search")?.trim() || "";
+    const limit = Number(searchParams.get("limit")) || 100;
+
+    // 🔥 OPTIONAL: sort (default: asc = urutan input)
+    const sort = searchParams.get("sort") === "desc" ? "desc" : "asc";
 
     if (!type) {
       return NextResponse.json(
@@ -20,15 +26,40 @@ export async function GET(req: Request) {
       where: {
         product: {
           type: type as any,
+          ...(search && {
+            OR: [
+              {
+                productName: {
+                  contains: search,
+                  mode: "insensitive",
+                },
+              },
+              {
+                partNo: {
+                  contains: search,
+                  mode: "insensitive",
+                },
+              },
+              {
+                computerCode: {
+                  contains: search,
+                  mode: "insensitive",
+                },
+              },
+            ],
+          }),
         },
       },
       include: {
         product: true,
       },
-      orderBy: [
-        { date: "asc" },        // 🔥 lama → baru
-        { createdAt: "asc" },   // 🔥 backup biar stabil
-      ],
+
+      // 🔥 FIX UTAMA: pakai createdAt (urutan asli)
+      orderBy: {
+        createdAt: sort,
+      },
+
+      take: limit,
     });
 
     return NextResponse.json(data);
@@ -44,7 +75,7 @@ export async function GET(req: Request) {
 
 
 // =====================
-// POST OUTGOING
+// POST OUTGOING (UPDATED 🔥)
 // =====================
 export async function POST(req: Request) {
   try {
@@ -53,14 +84,14 @@ export async function POST(req: Request) {
     const computerCode = body.computerCode?.trim();
     const createdBy = body.createdBy?.trim();
     const type = body.type;
-    const date = body.date;
 
+    const date = body.date ? new Date(body.date) : new Date();
     const qty = Number(body.qty);
 
     // =====================
     // VALIDASI
     // =====================
-    if (!computerCode || !createdBy || !qty || !type) {
+    if (!computerCode || !createdBy || !type) {
       return NextResponse.json(
         { error: "Data tidak lengkap!" },
         { status: 400 }
@@ -70,6 +101,13 @@ export async function POST(req: Request) {
     if (isNaN(qty) || qty <= 0) {
       return NextResponse.json(
         { error: "Qty harus lebih dari 0!" },
+        { status: 400 }
+      );
+    }
+
+    if (isNaN(date.getTime())) {
+      return NextResponse.json(
+        { error: "Format tanggal tidak valid!" },
         { status: 400 }
       );
     }
@@ -86,7 +124,7 @@ export async function POST(req: Request) {
         type: type,
       },
       orderBy: {
-        createdAt: "desc", // 🔥 ambil paling baru
+        createdAt: "desc",
       },
     });
 
@@ -122,9 +160,9 @@ export async function POST(req: Request) {
       const outgoing = await tx.wipOutgoing.create({
         data: {
           productId: product.id,
-          qty: qty,
+          qty,
           createdBy,
-          date: date ? new Date(date) : new Date(),
+          date,
         },
       });
 

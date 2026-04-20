@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 // =====================
-// GET INCOMING
+// GET INCOMING (UPDATED 🔥)
 // =====================
 export async function GET(req: Request) {
   try {
@@ -11,6 +11,9 @@ export async function GET(req: Request) {
     const type = searchParams.get("type");
     const search = searchParams.get("search")?.trim() || "";
     const limit = Number(searchParams.get("limit")) || 100;
+
+    // 🔥 SORT PARAM (default: asc = lama → baru)
+    const sort = searchParams.get("sort") === "desc" ? "desc" : "asc";
 
     if (!type) {
       return NextResponse.json(
@@ -50,10 +53,12 @@ export async function GET(req: Request) {
       include: {
         product: true,
       },
-      orderBy: [
-        { date: "asc" },        // utama
-        { createdAt: "asc" },   // backup biar stabil 🔥
-      ],
+
+      // 🔥 SORT FIX (STABLE)
+      orderBy: {
+  createdAt: "asc", // 🔥 ini kunci utama
+},
+
       take: limit,
     });
 
@@ -70,7 +75,7 @@ export async function GET(req: Request) {
 
 
 // =====================
-// POST INCOMING
+// POST INCOMING (UPDATED 🔥)
 // =====================
 export async function POST(req: Request) {
   try {
@@ -81,14 +86,16 @@ export async function POST(req: Request) {
     const ipqc = body.ipqc?.trim();
     const remark = body.remark?.trim();
     const type = body.type;
-    const date = body.date;
+
+    // 🔥 HANDLE DATE LEBIH AMAN
+    const date = body.date ? new Date(body.date) : new Date();
 
     const parsedQty = Number(body.qty);
 
     // =====================
     // VALIDASI
     // =====================
-    if (!computerCode || !createdBy || !parsedQty || !type) {
+    if (!computerCode || !createdBy || !type) {
       return NextResponse.json(
         { error: "Data tidak lengkap!" },
         { status: 400 }
@@ -102,8 +109,15 @@ export async function POST(req: Request) {
       );
     }
 
+    if (isNaN(date.getTime())) {
+      return NextResponse.json(
+        { error: "Format tanggal tidak valid!" },
+        { status: 400 }
+      );
+    }
+
     // =====================
-    // CARI PRODUCT (PRIORITAS TERBARU 🔥)
+    // CARI PRODUCT (TERBARU 🔥)
     // =====================
     const product = await prisma.wipProduct.findFirst({
       where: {
@@ -114,7 +128,7 @@ export async function POST(req: Request) {
         type: type,
       },
       orderBy: {
-        createdAt: "desc", // 🔥 ambil yang paling baru
+        createdAt: "desc", // ambil versi terbaru
       },
     });
 
@@ -138,7 +152,7 @@ export async function POST(req: Request) {
           createdBy,
           ipqc: ipqc || null,
           remark: remark || null,
-          date: date ? new Date(date) : new Date(),
+          date,
         },
       });
 

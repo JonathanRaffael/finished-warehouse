@@ -74,23 +74,18 @@ export default function OutgoingTable({ type }: { type: "HT" | "HK" }) {
   // FILTER + SORT TABLE
   // =====================
   const filteredData = useMemo(() => {
-    return data
-      .filter((item) =>
-        [
-          item.product.productName,
-          item.product.partNo,
-          item.product.computerCode,
-          item.createdBy,
-        ]
-          .join(" ")
-          .toLowerCase()
-          .includes(search.toLowerCase())
-      )
-      .sort(
-        (a, b) =>
-          new Date(a.date).getTime() - new Date(b.date).getTime()
-      ); // 🔥 lama → baru
-  }, [data, search]);
+  return data.filter((item) =>
+    [
+      item.product.productName,
+      item.product.partNo,
+      item.product.computerCode,
+      item.createdBy,
+    ]
+      .join(" ")
+      .toLowerCase()
+      .includes(search.toLowerCase())
+  );
+}, [data, search]);
 
   // =====================
   // SUBMIT
