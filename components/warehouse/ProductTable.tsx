@@ -9,6 +9,10 @@ export default function ProductTable({ type }: { type: "HT" | "HK" }) {
   const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
 
+  // 🔥 NEW: EDIT STATE
+  const [isEdit, setIsEdit] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+
   const [form, setForm] = useState({
     computerCode: "",
     partNo: "",
@@ -21,7 +25,7 @@ export default function ProductTable({ type }: { type: "HT" | "HK" }) {
     try {
       const res = await fetch(`/api/wip/stock?type=${type}`);
       const json = await res.json();
-      setData(json);
+setData(json.data || []);
     } finally {
       setLoading(false);
     }
@@ -32,28 +36,35 @@ export default function ProductTable({ type }: { type: "HT" | "HK" }) {
   }, [type]);
 
   const filteredData = useMemo(() => {
-  return data
-    .filter((item) =>
-      [item.product.productName, item.product.partNo, item.product.computerCode]
-        .join(" ")
-        .toLowerCase()
-        .includes(search.toLowerCase())
-    )
-    .sort(
-      (a, b) =>
-        new Date(a.product?.createdAt || 0).getTime() -
-        new Date(b.product?.createdAt || 0).getTime()
-    );
-}, [data, search]);
+    return data
+      .filter((item) =>
+        [item.product.productName, item.product.partNo, item.product.computerCode]
+          .join(" ")
+          .toLowerCase()
+          .includes(search.toLowerCase())
+      )
+      .sort(
+        (a, b) =>
+          new Date(a.product?.createdAt || 0).getTime() -
+          new Date(b.product?.createdAt || 0).getTime()
+      );
+  }, [data, search]);
 
+  // 🔥 HANDLE ADD / UPDATE
   const handleSubmit = async () => {
     if (!form.computerCode || !form.partNo || !form.productName) {
       alert("Lengkapi data!");
       return;
     }
 
-    const res = await fetch("/api/wip/product", {
-      method: "POST",
+    const url = isEdit
+      ? `/api/wip/stock/${editId}` // 🔥 endpoint update
+      : "/api/wip/product";
+
+    const method = isEdit ? "PUT" : "POST";
+
+    const res = await fetch(url, {
+      method,
       headers: {
         "Content-Type": "application/json",
       },
@@ -61,15 +72,37 @@ export default function ProductTable({ type }: { type: "HT" | "HK" }) {
     });
 
     if (res.ok) {
-      setShowForm(false);
-      setForm({
-        computerCode: "",
-        partNo: "",
-        productName: "",
-        initialStock: 0,
-      });
+      resetForm();
       fetchData();
     }
+  };
+
+  // 🔥 HANDLE EDIT CLICK
+  const handleEdit = (item: any) => {
+    setIsEdit(true);
+    setEditId(item.id);
+    setShowForm(true);
+
+    setForm({
+      computerCode: item.product.computerCode,
+      partNo: item.product.partNo,
+      productName: item.product.productName,
+      initialStock: item.initialStock,
+    });
+  };
+
+  // 🔥 RESET FORM
+  const resetForm = () => {
+    setShowForm(false);
+    setIsEdit(false);
+    setEditId(null);
+
+    setForm({
+      computerCode: "",
+      partNo: "",
+      productName: "",
+      initialStock: 0,
+    });
   };
 
   const stockColor = (n: number) => {
@@ -83,24 +116,25 @@ export default function ProductTable({ type }: { type: "HT" | "HK" }) {
 
       {/* 🔷 HEADER */}
       <div className="px-4 pt-4 pb-2 flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold">
+            Product List ({type})
+          </h2>
+          <p className="text-sm text-slate-500">
+            Manage and monitor product stock
+          </p>
+        </div>
 
-  <div>
-    <h2 className="text-lg font-semibold">
-      Product List ({type})
-    </h2>
-    <p className="text-sm text-slate-500">
-      Manage and monitor product stock
-    </p>
-  </div>
-
-  <button
-    onClick={() => setShowForm(true)}
-    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm shadow"
-  >
-    + Add Product
-  </button>
-
-</div>
+        <button
+          onClick={() => {
+            resetForm();
+            setShowForm(true);
+          }}
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm shadow"
+        >
+          + Add Product
+        </button>
+      </div>
 
       {/* 🔍 SEARCH */}
       <div className="flex items-center gap-3">
@@ -114,7 +148,6 @@ export default function ProductTable({ type }: { type: "HT" | "HK" }) {
 
       {/* 📊 TABLE CARD */}
       <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
-
         <table className="w-full text-sm">
           <thead className="bg-slate-50 border-b text-slate-600">
             <tr>
@@ -126,6 +159,7 @@ export default function ProductTable({ type }: { type: "HT" | "HK" }) {
                 "Incoming",
                 "Outgoing",
                 "Final",
+                "Action", // 🔥 tambahan kolom (UX tetap aman)
               ].map((h) => (
                 <th key={h} className="px-4 py-3 text-left font-medium">
                   {h}
@@ -137,18 +171,18 @@ export default function ProductTable({ type }: { type: "HT" | "HK" }) {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={7} className="text-center py-10 text-slate-400">
+                <td colSpan={8} className="text-center py-10 text-slate-400">
                   Loading data...
                 </td>
               </tr>
             ) : filteredData.length === 0 ? (
               <tr>
-                <td colSpan={7} className="text-center py-10 text-slate-400">
+                <td colSpan={8} className="text-center py-10 text-slate-400">
                   No product found
                 </td>
               </tr>
             ) : (
-              filteredData.map((item, i) => (
+              filteredData.map((item) => (
                 <tr
                   key={item.id}
                   className="border-b hover:bg-slate-50 transition"
@@ -186,6 +220,16 @@ export default function ProductTable({ type }: { type: "HT" | "HK" }) {
                       {item.finalStock}
                     </span>
                   </td>
+
+                  {/* 🔥 EDIT BUTTON */}
+                  <td className="px-4 py-3">
+                    <button
+                      onClick={() => handleEdit(item)}
+                      className="text-blue-600 hover:underline text-sm"
+                    >
+                      Edit
+                    </button>
+                  </td>
                 </tr>
               ))
             )}
@@ -195,104 +239,101 @@ export default function ProductTable({ type }: { type: "HT" | "HK" }) {
 
       {/* 🧾 MODAL FORM */}
       {showForm && (
-  <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-    <div className="bg-white rounded-2xl p-6 w-[420px] space-y-5 shadow-xl">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 w-[420px] space-y-5 shadow-xl">
 
-      {/* HEADER */}
-      <div>
-        <h3 className="font-semibold text-lg">Add Product</h3>
-        <p className="text-sm text-slate-500">
-          Fill in product details to create new item
-        </p>
-      </div>
+            {/* HEADER */}
+            <div>
+              <h3 className="font-semibold text-lg">
+                {isEdit ? "Edit Product" : "Add Product"}
+              </h3>
+              <p className="text-sm text-slate-500">
+                Fill in product details to create new item
+              </p>
+            </div>
 
-      {/* FORM */}
-      <div className="space-y-4">
+            {/* FORM */}
+            <div className="space-y-4">
 
-        {/* COMPUTER CODE */}
-        <div className="space-y-1">
-          <label className="text-sm font-medium">Computer Code</label>
-          <input
-            placeholder="e.g. RRU17450201D5T"
-            className="border px-3 py-2 w-full rounded-lg"
-            value={form.computerCode}
-            onChange={(e) =>
-              setForm({ ...form, computerCode: e.target.value })
-            }
-          />
+              {/* COMPUTER CODE */}
+              <div className="space-y-1">
+                <label className="text-sm font-medium">Computer Code</label>
+                <input
+                  className="border px-3 py-2 w-full rounded-lg"
+                  value={form.computerCode}
+                  onChange={(e) =>
+                    setForm({ ...form, computerCode: e.target.value })
+                  }
+                />
+              </div>
+
+              {/* PART NO */}
+              <div className="space-y-1">
+                <label className="text-sm font-medium">Part Number</label>
+                <input
+                  className="border px-3 py-2 w-full rounded-lg"
+                  value={form.partNo}
+                  onChange={(e) =>
+                    setForm({ ...form, partNo: e.target.value })
+                  }
+                />
+              </div>
+
+              {/* PRODUCT NAME */}
+              <div className="space-y-1">
+                <label className="text-sm font-medium">Product Name</label>
+                <input
+                  className="border px-3 py-2 w-full rounded-lg"
+                  value={form.productName}
+                  onChange={(e) =>
+                    setForm({ ...form, productName: e.target.value })
+                  }
+                />
+              </div>
+
+              {/* INITIAL STOCK */}
+              <div className="space-y-1">
+                <label className="text-sm font-medium">Initial Stock</label>
+
+                <input
+                  type="number"
+                  className="border px-3 py-2 w-full rounded-lg"
+                  value={form.initialStock || ""}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      initialStock: Number(e.target.value),
+                    })
+                  }
+                />
+
+                <p className="text-xs text-slate-500">
+                  This is the starting quantity before any incoming or outgoing transactions.
+                </p>
+              </div>
+
+            </div>
+
+            {/* ACTION */}
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                onClick={resetForm}
+                className="px-4 py-2 text-sm rounded-lg border hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+
+              <button
+                onClick={handleSubmit}
+                className="px-4 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700"
+              >
+                {isEdit ? "Update" : "Save Product"}
+              </button>
+            </div>
+
+          </div>
         </div>
-
-        {/* PART NO */}
-        <div className="space-y-1">
-          <label className="text-sm font-medium">Part Number</label>
-          <input
-            placeholder="e.g. D25797-5T"
-            className="border px-3 py-2 w-full rounded-lg"
-            value={form.partNo}
-            onChange={(e) =>
-              setForm({ ...form, partNo: e.target.value })
-            }
-          />
-        </div>
-
-        {/* PRODUCT NAME */}
-        <div className="space-y-1">
-          <label className="text-sm font-medium">Product Name</label>
-          <input
-            placeholder="e.g. Upper Sealing Strip"
-            className="border px-3 py-2 w-full rounded-lg"
-            value={form.productName}
-            onChange={(e) =>
-              setForm({ ...form, productName: e.target.value })
-            }
-          />
-        </div>
-
-        {/* INITIAL STOCK */}
-        <div className="space-y-1">
-          <label className="text-sm font-medium">
-            Initial Stock
-          </label>
-
-          <input
-            type="number"
-            placeholder="Enter starting stock (default 0)"
-            className="border px-3 py-2 w-full rounded-lg"
-            value={form.initialStock || ""}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                initialStock: Number(e.target.value),
-              })
-            }
-          />
-
-          <p className="text-xs text-slate-500">
-            This is the starting quantity before any incoming or outgoing transactions.
-          </p>
-        </div>
-
-      </div>
-
-      {/* ACTION */}
-      <div className="flex justify-end gap-2 pt-2">
-        <button
-          onClick={() => setShowForm(false)}
-          className="px-4 py-2 text-sm rounded-lg border hover:bg-slate-50"
-        >
-          Cancel
-        </button>
-
-        <button
-          onClick={handleSubmit}
-          className="px-4 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700"
-        >
-          Save Product
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+      )}
     </div>
   );
 }
