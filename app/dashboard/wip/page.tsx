@@ -54,14 +54,12 @@ export default function WipPage() {
           </p>
         </div>
 
-        <div className="flex gap-2">
-          <button
-            onClick={fetchStats}
-            className="px-4 py-2 text-sm border rounded-lg hover:bg-slate-50"
-          >
-            Refresh
-          </button>
-        </div>
+        <button
+          onClick={fetchStats}
+          className="px-4 py-2 text-sm border rounded-lg hover:bg-slate-50"
+        >
+          Refresh
+        </button>
       </div>
 
       {/* 🔥 SUMMARY CARDS */}
@@ -106,29 +104,17 @@ export default function WipPage() {
 
       {/* 🔷 CONTROL PANEL */}
       <Card className="p-4 flex flex-col gap-4 border shadow-sm">
-
         <div className="flex flex-wrap gap-3 items-center justify-between">
 
           <WipTabs view={view} setView={setView} />
 
-          <div className="flex gap-3 items-center">
-
-            <WipTypeFilter type={type} setType={setType} />
-
-            <input
-              placeholder="Quick search..."
-              className="border px-3 py-2 rounded-lg text-sm w-[200px] focus:ring-2 focus:ring-blue-500 outline-none"
-            />
-
-          </div>
+          <WipTypeFilter type={type} setType={setType} />
 
         </div>
-
       </Card>
 
       {/* 🔷 TABLE */}
       <Card className="border shadow-sm overflow-hidden">
-
         <div className="overflow-x-auto max-h-[70vh]">
 
           {view === "product" && <ProductTable type={type} />}
@@ -136,7 +122,6 @@ export default function WipPage() {
           {view === "outgoing" && <OutgoingTable type={type} />}
 
         </div>
-
       </Card>
 
     </div>

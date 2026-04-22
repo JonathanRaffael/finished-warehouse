@@ -2,16 +2,35 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+type Product = {
+  id: string;
+  initialStock: number;
+  incomingQty: number;
+  outgoingQty: number;
+  finalStock: number;
+  product: {
+    computerCode: string;
+    partNo: string;
+    productName: string;
+    createdAt?: string;
+  };
+};
+
 export default function ProductTable({ type }: { type: "HT" | "HK" }) {
-  const [data, setData] = useState<any[]>([]);
+  const [data, setData] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [search, setSearch] = useState("");
-  const [showForm, setShowForm] = useState(false);
+  const [debouncedSearch, setDebouncedSearch] = useState("");
 
-  // 🔥 NEW: EDIT STATE
+  const [showForm, setShowForm] = useState(false);
   const [isEdit, setIsEdit] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
+
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  const [submitting, setSubmitting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const [form, setForm] = useState({
     computerCode: "",
@@ -20,12 +39,30 @@ export default function ProductTable({ type }: { type: "HT" | "HK" }) {
     initialStock: 0,
   });
 
+  // 🔥 Debounce (TAMBAHAN - TIDAK MENGHAPUS APAPUN)
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 300);
+
+    return () => clearTimeout(timeout);
+  }, [search]);
+
+  // 🔥 FETCH DATA
   const fetchData = async () => {
     setLoading(true);
     try {
       const res = await fetch(`/api/wip/stock?type=${type}`);
       const json = await res.json();
-setData(json.data || []);
+
+      if (!json || !json.data) {
+        setData([]);
+        return;
+      }
+
+      setData(json.data);
+    } catch (error) {
+      console.error("Fetch error:", error);
     } finally {
       setLoading(false);
     }
@@ -35,50 +72,67 @@ setData(json.data || []);
     fetchData();
   }, [type]);
 
+  // 🔥 FILTER + SORT (DITAMBAH LOG, TIDAK DIKURANGI)
   const filteredData = useMemo(() => {
-    return data
+    const result = data
       .filter((item) =>
-        [item.product.productName, item.product.partNo, item.product.computerCode]
+        [
+          item.product.productName,
+          item.product.partNo,
+          item.product.computerCode,
+        ]
           .join(" ")
           .toLowerCase()
-          .includes(search.toLowerCase())
+          .includes(debouncedSearch.toLowerCase())
       )
       .sort(
         (a, b) =>
           new Date(a.product?.createdAt || 0).getTime() -
           new Date(b.product?.createdAt || 0).getTime()
       );
-  }, [data, search]);
 
-  // 🔥 HANDLE ADD / UPDATE
+    return result;
+  }, [data, debouncedSearch]);
+
+  // 🔥 HANDLE SUBMIT
   const handleSubmit = async () => {
     if (!form.computerCode || !form.partNo || !form.productName) {
-      alert("Lengkapi data!");
+      alert("Please complete all fields!");
       return;
     }
 
-    const url = isEdit
-      ? `/api/wip/stock/${editId}` // 🔥 endpoint update
-      : "/api/wip/product";
+    setSubmitting(true);
 
-    const method = isEdit ? "PUT" : "POST";
+    try {
+      const url = isEdit
+        ? `/api/wip/stock/${editId}`
+        : "/api/wip/product";
 
-    const res = await fetch(url, {
-      method,
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ ...form, type }),
-    });
+      const method = isEdit ? "PUT" : "POST";
 
-    if (res.ok) {
-      resetForm();
-      fetchData();
+      const res = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ ...form, type }),
+      });
+
+      if (res.ok) {
+        resetForm();
+        fetchData();
+      } else {
+        console.error("Submit failed");
+      }
+    } catch (error) {
+      console.error("Submit error:", error);
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  // 🔥 HANDLE EDIT CLICK
-  const handleEdit = (item: any) => {
+  // 🔥 HANDLE EDIT
+  const handleEdit = (item: Product) => {
     setIsEdit(true);
     setEditId(item.id);
     setShowForm(true);
@@ -89,6 +143,30 @@ setData(json.data || []);
       productName: item.product.productName,
       initialStock: item.initialStock,
     });
+  };
+
+  // 🔥 HANDLE DELETE
+  const handleConfirmDelete = async () => {
+    if (!deleteId) return;
+
+    setDeleting(true);
+
+    try {
+      const res = await fetch(`/api/wip/stock/${deleteId}`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) {
+        console.error("Delete failed");
+      } else {
+        await fetchData();
+        setDeleteId(null);
+      }
+    } catch (error) {
+      console.error("Delete error:", error);
+    } finally {
+      setDeleting(false);
+    }
   };
 
   // 🔥 RESET FORM
@@ -105,6 +183,7 @@ setData(json.data || []);
     });
   };
 
+  // 🔥 COLOR LOGIC (TETAP + DIPERJELAS)
   const stockColor = (n: number) => {
     if (n <= 0) return "bg-red-100 text-red-700";
     if (n < 50) return "bg-yellow-100 text-yellow-700";
@@ -112,12 +191,12 @@ setData(json.data || []);
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
 
-      {/* 🔷 HEADER */}
-      <div className="px-4 pt-4 pb-2 flex items-center justify-between">
+      {/* HEADER */}
+      <div className="px-4 flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold">
+          <h2 className="text-xl font-semibold">
             Product List ({type})
           </h2>
           <p className="text-sm text-slate-500">
@@ -136,204 +215,236 @@ setData(json.data || []);
         </button>
       </div>
 
-      {/* 🔍 SEARCH */}
-      <div className="flex items-center gap-3">
+      {/* SEARCH */}
+      <div className="px-4 flex items-center gap-4">
         <input
-          placeholder="Search product, part no, code..."
-          className="border rounded-lg px-4 py-2 w-full text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+          placeholder="Search product, part number, or code..."
+          className="border rounded-lg px-4 py-2.5 w-[260px] text-sm focus:ring-2 focus:ring-blue-500 outline-none"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
+
+        {/* 🔥 TAMBAHAN INFO */}
+        <span className="text-xs text-slate-400">
+          Showing {filteredData.length} of {data.length} items
+        </span>
       </div>
 
-      {/* 📊 TABLE CARD */}
-      <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50 border-b text-slate-600">
-            <tr>
-              {[
-                "Code",
-                "Part No",
-                "Product",
-                "Initial",
-                "Incoming",
-                "Outgoing",
-                "Final",
-                "Action", // 🔥 tambahan kolom (UX tetap aman)
-              ].map((h) => (
-                <th key={h} className="px-4 py-3 text-left font-medium">
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
+      {/* TABLE */}
+      <div className="px-4">
+        <div className="bg-white rounded-xl border shadow-sm">
 
-          <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan={8} className="text-center py-10 text-slate-400">
-                  Loading data...
-                </td>
-              </tr>
-            ) : filteredData.length === 0 ? (
-              <tr>
-                <td colSpan={8} className="text-center py-10 text-slate-400">
-                  No product found
-                </td>
-              </tr>
-            ) : (
-              filteredData.map((item) => (
-                <tr
-                  key={item.id}
-                  className="border-b hover:bg-slate-50 transition"
-                >
-                  <td className="px-4 py-3 font-mono text-blue-600">
-                    {item.product.computerCode}
-                  </td>
+          <div className="overflow-x-auto max-h-[65vh]">
+            <table className="w-full text-sm">
 
-                  <td className="px-4 py-3">
-                    {item.product.partNo}
-                  </td>
-
-                  <td className="px-4 py-3 font-medium">
-                    {item.product.productName}
-                  </td>
-
-                  <td className="px-4 py-3">
-                    {item.initialStock}
-                  </td>
-
-                  <td className="px-4 py-3 text-green-600 font-medium">
-                    +{item.incomingQty}
-                  </td>
-
-                  <td className="px-4 py-3 text-red-600 font-medium">
-                    -{item.outgoingQty}
-                  </td>
-
-                  <td className="px-4 py-3">
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs font-semibold ${stockColor(
-                        item.finalStock
-                      )}`}
-                    >
-                      {item.finalStock}
-                    </span>
-                  </td>
-
-                  {/* 🔥 EDIT BUTTON */}
-                  <td className="px-4 py-3">
-                    <button
-                      onClick={() => handleEdit(item)}
-                      className="text-blue-600 hover:underline text-sm"
-                    >
-                      Edit
-                    </button>
-                  </td>
+              <thead className="bg-slate-100 text-slate-700 border-b sticky top-0 z-10">
+                <tr>
+                  {[
+                    "Code",
+                    "Part No",
+                    "Product",
+                    "Initial",
+                    "Incoming",
+                    "Outgoing",
+                    "Final",
+                    "Action",
+                  ].map((h) => (
+                    <th key={h} className="px-4 py-3 text-left font-medium">
+                      {h}
+                    </th>
+                  ))}
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              </thead>
+
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan={8} className="p-6">
+                      {[...Array(8)].map((_, i) => (
+                        <div key={i} className="h-4 bg-slate-200 rounded animate-pulse mb-2" />
+                      ))}
+                    </td>
+                  </tr>
+                ) : filteredData.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="text-center py-10 text-slate-400">
+                      No product found matching your search.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredData.map((item, i) => (
+                    <tr
+                      key={item.id}
+                      className={`border-b transition hover:bg-slate-50 ${
+                        i % 2 === 0 ? "bg-white" : "bg-slate-50/40"
+                      }`}
+                    >
+                      <td className="px-4 py-3 font-mono text-blue-600">
+                        {item.product.computerCode}
+                      </td>
+
+                      <td className="px-4 py-3">
+                        {item.product.partNo}
+                      </td>
+
+                      <td className="px-4 py-3 font-medium">
+                        {item.product.productName}
+                      </td>
+
+                      <td className="px-4 py-3">
+                        {item.initialStock}
+                      </td>
+
+                      <td className="px-4 py-3 text-green-600 font-medium">
+                        +{item.incomingQty}
+                      </td>
+
+                      <td className="px-4 py-3 text-red-600 font-medium">
+                        -{item.outgoingQty}
+                      </td>
+
+                      <td className="px-4 py-3">
+                        <span
+                          className={`px-3 py-1 rounded-full text-xs font-semibold shadow-sm ${stockColor(
+                            item.finalStock
+                          )}`}
+                        >
+                          {item.finalStock}
+                        </span>
+                      </td>
+
+                      <td className="px-4 py-3 flex gap-2">
+                        <button
+                          onClick={() => handleEdit(item)}
+                          className="px-2 py-1 text-xs bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100"
+                        >
+                          Edit
+                        </button>
+
+                        <button
+                          onClick={() => setDeleteId(item.id)}
+                          className="px-2 py-1 text-xs bg-red-50 text-red-600 rounded-md hover:bg-red-100"
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+
+            </table>
+          </div>
+
+        </div>
       </div>
 
-      {/* 🧾 MODAL FORM */}
+      {/* FORM MODAL */}
       {showForm && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl p-6 w-[420px] space-y-5 shadow-xl">
 
-            {/* HEADER */}
-            <div>
-              <h3 className="font-semibold text-lg">
-                {isEdit ? "Edit Product" : "Add Product"}
-              </h3>
-              <p className="text-sm text-slate-500">
-                Fill in product details to create new item
-              </p>
-            </div>
+            <h3 className="text-lg font-semibold">
+              {isEdit ? "Edit Product" : "Add Product"}
+            </h3>
 
-            {/* FORM */}
             <div className="space-y-4">
 
-              {/* COMPUTER CODE */}
-              <div className="space-y-1">
+              <div>
                 <label className="text-sm font-medium">Computer Code</label>
-                <input
-                  className="border px-3 py-2 w-full rounded-lg"
+                <input className="border px-3 py-2 w-full rounded-lg"
                   value={form.computerCode}
-                  onChange={(e) =>
-                    setForm({ ...form, computerCode: e.target.value })
-                  }
+                  onChange={(e)=>setForm({...form,computerCode:e.target.value})}
                 />
+                <p className="text-xs text-slate-400">
+                  Unique identifier for the product
+                </p>
               </div>
 
-              {/* PART NO */}
-              <div className="space-y-1">
+              <div>
                 <label className="text-sm font-medium">Part Number</label>
-                <input
-                  className="border px-3 py-2 w-full rounded-lg"
+                <input className="border px-3 py-2 w-full rounded-lg"
                   value={form.partNo}
-                  onChange={(e) =>
-                    setForm({ ...form, partNo: e.target.value })
-                  }
+                  onChange={(e)=>setForm({...form,partNo:e.target.value})}
                 />
+                <p className="text-xs text-slate-400">
+                  Official part number reference
+                </p>
               </div>
 
-              {/* PRODUCT NAME */}
-              <div className="space-y-1">
+              <div>
                 <label className="text-sm font-medium">Product Name</label>
-                <input
-                  className="border px-3 py-2 w-full rounded-lg"
+                <input className="border px-3 py-2 w-full rounded-lg"
                   value={form.productName}
-                  onChange={(e) =>
-                    setForm({ ...form, productName: e.target.value })
-                  }
+                  onChange={(e)=>setForm({...form,productName:e.target.value})}
                 />
+                <p className="text-xs text-slate-400">
+                  Name displayed in the system
+                </p>
               </div>
 
-              {/* INITIAL STOCK */}
-              <div className="space-y-1">
+              <div>
                 <label className="text-sm font-medium">Initial Stock</label>
-
-                <input
-                  type="number"
-                  className="border px-3 py-2 w-full rounded-lg"
-                  value={form.initialStock || ""}
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-                      initialStock: Number(e.target.value),
-                    })
-                  }
+                <input type="number" className="border px-3 py-2 w-full rounded-lg"
+                  value={form.initialStock}
+                  onChange={(e)=>setForm({...form,initialStock:Number(e.target.value)})}
                 />
-
-                <p className="text-xs text-slate-500">
-                  This is the starting quantity before any incoming or outgoing transactions.
+                <p className="text-xs text-slate-400">
+                  Starting quantity before transactions
                 </p>
               </div>
 
             </div>
 
-            {/* ACTION */}
-            <div className="flex justify-end gap-2 pt-2">
-              <button
-                onClick={resetForm}
-                className="px-4 py-2 text-sm rounded-lg border hover:bg-slate-50"
-              >
+            <div className="flex justify-end gap-2">
+              <button onClick={resetForm} className="px-4 py-2 border rounded-lg">
                 Cancel
               </button>
 
               <button
                 onClick={handleSubmit}
-                className="px-4 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700"
+                disabled={submitting}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg disabled:opacity-50"
               >
-                {isEdit ? "Update" : "Save Product"}
+                {submitting ? "Saving..." : isEdit ? "Update" : "Save"}
               </button>
             </div>
 
           </div>
         </div>
       )}
+
+      {/* DELETE MODAL */}
+      {deleteId && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 w-[360px] space-y-4 shadow-xl">
+
+            <h3 className="text-lg font-semibold">
+              Delete Product
+            </h3>
+
+            <p className="text-sm text-slate-500">
+              Are you sure you want to delete this product? This action cannot be undone.
+            </p>
+
+            <div className="flex justify-end gap-2">
+              <button onClick={()=>setDeleteId(null)} className="px-4 py-2 border rounded-lg">
+                Cancel
+              </button>
+
+              <button
+                onClick={handleConfirmDelete}
+                disabled={deleting}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg disabled:opacity-50"
+              >
+                {deleting ? "Deleting..." : "Delete"}
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

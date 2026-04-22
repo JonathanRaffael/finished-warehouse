@@ -3,33 +3,54 @@ import { prisma } from "@/lib/prisma";
 
 export async function PUT(
   req: Request,
-  context: { params: Promise<{ id: string }> } // 🔥 WAJIB
+  { params }: { params: { id: string } }
 ) {
   try {
-    // 🔥 UNWRAP PARAMS
-    const { id } = await context.params;
+    const id = params?.id;
 
-    const body = await req.json();
-    const initialStock = Number(body.initialStock);
-
-    // VALIDASI
+    // 🔴 VALIDATE ID
     if (!id) {
       return NextResponse.json(
-        { error: "ID tidak ditemukan!" },
+        { success: false, message: "Invalid ID" },
         { status: 400 }
       );
     }
 
-    if (isNaN(initialStock) || initialStock < 0) {
+    // 🔴 PARSE BODY
+    const body = await req.json().catch(() => null);
+
+    if (!body) {
       return NextResponse.json(
-        { error: "Initial stock tidak valid!" },
+        { success: false, message: "Invalid request body" },
         { status: 400 }
       );
     }
 
-    // UPDATE
+    const initialStock = Number(body.initialStock);
+
+    // 🔴 VALIDATE INPUT
+    if (!Number.isFinite(initialStock) || initialStock < 0) {
+      return NextResponse.json(
+        { success: false, message: "Initial stock must be a valid non-negative number" },
+        { status: 400 }
+      );
+    }
+
+    // 🔴 CHECK EXISTENCE
+    const existing = await prisma.wipStock.findUnique({
+      where: { id },
+    });
+
+    if (!existing) {
+      return NextResponse.json(
+        { success: false, message: "Stock data not found" },
+        { status: 404 }
+      );
+    }
+
+    // 🔴 UPDATE DATA
     const updated = await prisma.wipStock.update({
-      where: { id }, // ✅ sekarang aman
+      where: { id },
       data: {
         initialStock,
       },
@@ -38,13 +59,16 @@ export async function PUT(
       },
     });
 
+    // 🔴 CALCULATE FINAL STOCK
     const finalStock =
       (updated.initialStock ?? 0) +
       (updated.incomingQty ?? 0) -
       (updated.outgoingQty ?? 0);
 
+    // 🔴 SUCCESS RESPONSE
     return NextResponse.json({
       success: true,
+      message: "Stock updated successfully",
       data: {
         ...updated,
         finalStock,
@@ -55,7 +79,10 @@ export async function PUT(
     console.error("UPDATE STOCK ERROR:", error);
 
     return NextResponse.json(
-      { error: "Failed to update stock" },
+      {
+        success: false,
+        message: "Internal server error",
+      },
       { status: 500 }
     );
   }
