@@ -3,10 +3,11 @@ import { prisma } from "@/lib/prisma";
 
 export async function PUT(
   req: Request,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const id = params?.id;
+    // ✅ UNWRAP PARAMS (WAJIB DI NEXT 15)
+    const { id } = await context.params;
 
     // 🔴 VALIDATE ID
     if (!id) {
