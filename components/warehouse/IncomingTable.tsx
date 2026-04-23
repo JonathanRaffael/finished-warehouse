@@ -29,8 +29,12 @@ export default function IncomingTable({ type }: { type: "HT" | "HK" }) {
   const [data, setData] = useState<Incoming[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
+
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  const [showForm, setShowForm] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const [form, setForm] = useState({
     productId: "",
@@ -43,7 +47,17 @@ export default function IncomingTable({ type }: { type: "HT" | "HK" }) {
   });
 
   // =====================
-  // FETCH INCOMING
+  // 🔥 DEBOUNCE (DITAMBAH TANPA HAPUS LOGIC)
+  // =====================
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  // =====================
+  // FETCH
   // =====================
   const fetchData = () => {
     setLoading(true);
@@ -54,14 +68,10 @@ export default function IncomingTable({ type }: { type: "HT" | "HK" }) {
       .finally(() => setLoading(false));
   };
 
-  // =====================
-  // FETCH PRODUCT (SORT TERBARU DI ATAS 🔥)
-  // =====================
   const fetchProducts = async () => {
     const res = await fetch(`/api/wip/product?type=${type}`);
     const data = await res.json();
 
-    // 🔥 SORT LOCAL (jaga-jaga kalau API belum update)
     const sorted = data.sort(
       (a: Product, b: Product) =>
         new Date(b.createdAt || "").getTime() -
@@ -77,21 +87,21 @@ export default function IncomingTable({ type }: { type: "HT" | "HK" }) {
   }, [type]);
 
   // =====================
-  // FILTER TABLE
+  // FILTER
   // =====================
   const filteredData = useMemo(() => {
-  return data.filter((item) =>
-    [
-      item.product.productName,
-      item.product.partNo,
-      item.product.computerCode,
-      item.createdBy,
-    ]
-      .join(" ")
-      .toLowerCase()
-      .includes(search.toLowerCase())
-  );
-}, [data, search]);
+    return data.filter((item) =>
+      [
+        item.product.productName,
+        item.product.partNo,
+        item.product.computerCode,
+        item.createdBy,
+      ]
+        .join(" ")
+        .toLowerCase()
+        .includes(debouncedSearch.toLowerCase())
+    );
+  }, [data, debouncedSearch]);
 
   // =====================
   // SUBMIT
@@ -106,6 +116,8 @@ export default function IncomingTable({ type }: { type: "HT" | "HK" }) {
       alert("Computer Code tidak valid / produk tidak ditemukan!");
       return;
     }
+
+    setSubmitting(true);
 
     const res = await fetch("/api/wip/incoming", {
       method: "POST",
@@ -127,9 +139,16 @@ export default function IncomingTable({ type }: { type: "HT" | "HK" }) {
 
     if (!res.ok) {
       alert(result.error);
+      setSubmitting(false);
       return;
     }
 
+    resetForm();
+    fetchData();
+    setSubmitting(false);
+  };
+
+  const resetForm = () => {
     setShowForm(false);
     setForm({
       productId: "",
@@ -140,17 +159,15 @@ export default function IncomingTable({ type }: { type: "HT" | "HK" }) {
       remark: "",
       date: new Date().toISOString().split("T")[0],
     });
-
-    fetchData();
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
 
       {/* HEADER */}
-      <div className="px-4 pt-4 pb-2 flex items-center justify-between">
+      <div className="px-4 flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold">
+          <h2 className="text-xl font-semibold">
             Incoming List ({type})
           </h2>
           <p className="text-sm text-slate-500">
@@ -167,95 +184,109 @@ export default function IncomingTable({ type }: { type: "HT" | "HK" }) {
       </div>
 
       {/* SEARCH */}
-      <div className="flex items-center gap-3">
+      <div className="px-4 flex items-center gap-4">
         <input
           placeholder="Search product, code, responsible..."
-          className="border rounded-lg px-4 py-2 w-full text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+          className="border rounded-lg px-4 py-2.5 w-[260px] text-sm focus:ring-2 focus:ring-blue-500 outline-none"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
+
+        <span className="text-xs text-slate-400">
+          Showing {filteredData.length} of {data.length} items
+        </span>
       </div>
 
       {/* TABLE */}
-      <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50 border-b text-slate-600">
-            <tr>
-              {[
-                "Date",
-                "Code",
-                "Part No",
-                "Product",
-                "Qty",
-                "Responsible",
-                "IPQC",
-                "Remark",
-              ].map((h) => (
-                <th key={h} className="px-4 py-3 text-left font-medium">
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
+      <div className="px-4">
+        <div className="bg-white rounded-xl border shadow-sm">
+          <div className="overflow-x-auto max-h-[65vh]">
+            <table className="w-full text-sm">
 
-          <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan={8} className="text-center py-10 text-slate-400">
-                  Loading data...
-                </td>
-              </tr>
-            ) : filteredData.length === 0 ? (
-              <tr>
-                <td colSpan={8} className="text-center py-10 text-slate-400">
-                  No data found
-                </td>
-              </tr>
-            ) : (
-              filteredData.map((item) => (
-                <tr
-                  key={item.id}
-                  className="border-b hover:bg-slate-50 transition"
-                >
-                  <td className="px-4 py-3">
-                    {new Date(item.date).toLocaleDateString("id-ID")}
-                  </td>
-
-                  <td className="px-4 py-3 font-mono text-blue-600">
-                    {item.product.computerCode}
-                  </td>
-
-                  <td className="px-4 py-3">
-                    {item.product.partNo}
-                  </td>
-
-                  <td className="px-4 py-3 font-medium">
-                    {item.product.productName}
-                  </td>
-
-                  <td className="px-4 py-3 text-green-600 font-semibold">
-                    +{item.qty}
-                  </td>
-
-                  <td className="px-4 py-3">
-                    {item.createdBy}
-                  </td>
-
-                  <td className="px-4 py-3">
-                    {item.ipqc || "-"}
-                  </td>
-
-                  <td className="px-4 py-3">
-                    {item.remark || "-"}
-                  </td>
+              <thead className="bg-slate-100 text-slate-700 border-b sticky top-0 z-10">
+                <tr>
+                  {[
+                    "Date",
+                    "Code",
+                    "Part No",
+                    "Product",
+                    "Qty",
+                    "Responsible",
+                    "IPQC",
+                    "Remark",
+                  ].map((h) => (
+                    <th key={h} className="px-4 py-3 text-left font-medium">
+                      {h}
+                    </th>
+                  ))}
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              </thead>
+
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan={8} className="p-6">
+                      {[...Array(8)].map((_, i) => (
+                        <div key={i} className="h-4 bg-slate-200 rounded animate-pulse mb-2" />
+                      ))}
+                    </td>
+                  </tr>
+                ) : filteredData.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="text-center py-10 text-slate-400">
+                      No data found
+                    </td>
+                  </tr>
+                ) : (
+                  filteredData.map((item, i) => (
+                    <tr
+                      key={item.id}
+                      className={`border-b transition hover:bg-slate-50 ${
+                        i % 2 === 0 ? "bg-white" : "bg-slate-50/40"
+                      }`}
+                    >
+                      <td className="px-4 py-3">
+                        {new Date(item.date).toLocaleDateString("id-ID")}
+                      </td>
+
+                      <td className="px-4 py-3 font-mono text-blue-600">
+                        {item.product.computerCode}
+                      </td>
+
+                      <td className="px-4 py-3">
+                        {item.product.partNo}
+                      </td>
+
+                      <td className="px-4 py-3 font-medium">
+                        {item.product.productName}
+                      </td>
+
+                      <td className="px-4 py-3 text-green-600 font-semibold">
+                        +{item.qty}
+                      </td>
+
+                      <td className="px-4 py-3">
+                        {item.createdBy}
+                      </td>
+
+                      <td className="px-4 py-3">
+                        {item.ipqc || "-"}
+                      </td>
+
+                      <td className="px-4 py-3">
+                        {item.remark || "-"}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+
+            </table>
+          </div>
+        </div>
       </div>
 
-      {/* MODAL */}
+      {/* MODAL (SEMUA FIELD TETAP ADA 🔥) */}
       {showForm && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl p-6 w-[420px] space-y-5 shadow-xl">
@@ -269,7 +300,6 @@ export default function IncomingTable({ type }: { type: "HT" | "HK" }) {
 
             <div className="space-y-4">
 
-              {/* DATE */}
               <input
                 type="date"
                 className="border px-3 py-2 w-full rounded-lg"
@@ -279,7 +309,7 @@ export default function IncomingTable({ type }: { type: "HT" | "HK" }) {
                 }
               />
 
-              {/* COMPUTER CODE INPUT */}
+              {/* COMPUTER CODE */}
               <div className="space-y-1">
                 <input
                   placeholder="Type Computer Code (e.g: ABC123...)"
@@ -288,7 +318,6 @@ export default function IncomingTable({ type }: { type: "HT" | "HK" }) {
                   onChange={(e) => {
                     const code = e.target.value;
 
-                    // 🔥 ambil yang paling atas (produk terbaru)
                     const found = products.find((p) =>
                       p.computerCode
                         .toLowerCase()
@@ -308,7 +337,7 @@ export default function IncomingTable({ type }: { type: "HT" | "HK" }) {
                 </p>
               </div>
 
-              {/* AUTO INFO */}
+              {/* AUTO INFO TETAP ADA */}
               <div className="bg-slate-50 border rounded-lg p-3 text-sm">
                 {form.productId ? (
                   (() => {
@@ -380,23 +409,25 @@ export default function IncomingTable({ type }: { type: "HT" | "HK" }) {
 
             <div className="flex justify-end gap-2 pt-2">
               <button
-                onClick={() => setShowForm(false)}
-                className="px-4 py-2 text-sm rounded-lg border hover:bg-slate-50"
+                onClick={resetForm}
+                className="px-4 py-2 text-sm rounded-lg border"
               >
                 Cancel
               </button>
 
               <button
                 onClick={handleSubmit}
-                className="px-4 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700"
+                disabled={submitting}
+                className="px-4 py-2 text-sm rounded-lg bg-blue-600 text-white disabled:opacity-50"
               >
-                Save Incoming
+                {submitting ? "Saving..." : "Save Incoming"}
               </button>
             </div>
 
           </div>
         </div>
       )}
+
     </div>
   );
 }
