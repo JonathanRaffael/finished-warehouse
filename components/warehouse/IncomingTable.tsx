@@ -33,6 +33,12 @@ export default function IncomingTable({ type }: { type: "HT" | "HK" }) {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
 
+  // 🔥 PAGINATION STATE
+  const [page, setPage] = useState(1);
+  const [limit] = useState(20);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
+
   const [showForm, setShowForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -47,7 +53,7 @@ export default function IncomingTable({ type }: { type: "HT" | "HK" }) {
   });
 
   // =====================
-  // 🔥 DEBOUNCE (DITAMBAH TANPA HAPUS LOGIC)
+  // 🔥 DEBOUNCE
   // =====================
   useEffect(() => {
     const t = setTimeout(() => {
@@ -57,14 +63,27 @@ export default function IncomingTable({ type }: { type: "HT" | "HK" }) {
   }, [search]);
 
   // =====================
-  // FETCH
+  // 🔥 FETCH (UPDATED)
   // =====================
   const fetchData = () => {
     setLoading(true);
 
-    fetch(`/api/wip/incoming?type=${type}`)
+    fetch(
+      `/api/wip/incoming?type=${type}&page=${page}&limit=${limit}&search=${debouncedSearch}`
+    )
       .then((res) => res.json())
-      .then((res) => setData(res))
+      .then((res) => {
+        // support lama + baru
+        if (Array.isArray(res)) {
+          setData(res);
+          setTotal(res.length);
+          setTotalPages(1);
+        } else {
+          setData(res.data);
+          setTotal(res.pagination.total);
+          setTotalPages(res.pagination.totalPages);
+        }
+      })
       .finally(() => setLoading(false));
   };
 
@@ -84,10 +103,15 @@ export default function IncomingTable({ type }: { type: "HT" | "HK" }) {
   useEffect(() => {
     fetchData();
     fetchProducts();
-  }, [type]);
+  }, [type, page, debouncedSearch]);
+
+  // 🔥 RESET PAGE SAAT SEARCH
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, type]);
 
   // =====================
-  // FILTER
+  // FILTER (TETAP ADA)
   // =====================
   const filteredData = useMemo(() => {
     return data.filter((item) =>
@@ -193,7 +217,7 @@ export default function IncomingTable({ type }: { type: "HT" | "HK" }) {
         />
 
         <span className="text-xs text-slate-400">
-          Showing {filteredData.length} of {data.length} items
+          Showing {filteredData.length} of {total} items
         </span>
       </div>
 
@@ -283,6 +307,31 @@ export default function IncomingTable({ type }: { type: "HT" | "HK" }) {
 
             </table>
           </div>
+        </div>
+      </div>
+
+      {/* 🔥 PAGINATION UI */}
+      <div className="px-4 flex justify-between items-center">
+        <span className="text-sm text-slate-500">
+          Page {page} of {totalPages}
+        </span>
+
+        <div className="flex gap-2">
+          <button
+            onClick={() => setPage((p) => Math.max(p - 1, 1))}
+            disabled={page === 1}
+            className="px-3 py-1 border rounded disabled:opacity-50"
+          >
+            Previous
+          </button>
+
+          <button
+            onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
+            disabled={page === totalPages}
+            className="px-3 py-1 border rounded disabled:opacity-50"
+          >
+            Next
+          </button>
         </div>
       </div>
 

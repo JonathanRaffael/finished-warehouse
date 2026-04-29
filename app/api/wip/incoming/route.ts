@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 
 // =====================
-// GET INCOMING (UPDATED 🔥)
+// GET INCOMING (FINAL FIX 🚀)
 // =====================
 export async function GET(req: Request) {
   try {
@@ -10,10 +11,15 @@ export async function GET(req: Request) {
 
     const type = searchParams.get("type");
     const search = searchParams.get("search")?.trim() || "";
-    const limit = Number(searchParams.get("limit")) || 100;
 
-    // 🔥 SORT PARAM (default: asc = lama → baru)
-    const sort = searchParams.get("sort") === "desc" ? "desc" : "asc";
+    // PAGINATION
+    const page = Number(searchParams.get("page")) || 1;
+    const limit = Number(searchParams.get("limit")) || 20;
+    const skip = (page - 1) * limit;
+
+    // 🔥 SORT (BERDASARKAN WAKTU INPUT / createdAt)
+const sort =
+  searchParams.get("sort") === "desc" ? "desc" : "asc";
 
     if (!type) {
       return NextResponse.json(
@@ -22,47 +28,64 @@ export async function GET(req: Request) {
       );
     }
 
-    const data = await prisma.wipIncoming.findMany({
-      where: {
-        product: {
-          type: type as any,
-          ...(search && {
-            OR: [
-              {
-                productName: {
-                  contains: search,
-                  mode: "insensitive",
-                },
-              },
-              {
-                partNo: {
-                  contains: search,
-                  mode: "insensitive",
-                },
-              },
-              {
-                computerCode: {
-                  contains: search,
-                  mode: "insensitive",
-                },
-              },
-            ],
-          }),
-        },
-      },
-      include: {
-        product: true,
-      },
+    // =====================
+    // ✅ WHERE CONDITION (TYPE SAFE)
+    // =====================
+    const productFilter: Prisma.WipProductWhereInput = {
+      type: type as any,
+    };
 
-      // 🔥 SORT FIX (STABLE)
-      orderBy: {
-  createdAt: "asc", // 🔥 ini kunci utama
-},
+    if (search) {
+      productFilter.OR = [
+        { productName: { contains: search, mode: "insensitive" } },
+        { partNo: { contains: search, mode: "insensitive" } },
+        { computerCode: { contains: search, mode: "insensitive" } },
+      ];
+    }
 
-      take: limit,
+    const whereCondition: Prisma.WipIncomingWhereInput = {
+      product: {
+        is: productFilter,
+      },
+    };
+
+    // =====================
+    // QUERY DATA + TOTAL
+    // =====================
+    const [data, total] = await prisma.$transaction([
+  prisma.wipIncoming.findMany({
+    where: whereCondition,
+    include: {
+      product: true,
+    },
+
+    // 🔥 FIX SORT STABIL + BERDASARKAN WAKTU INPUT
+    orderBy: [
+      { createdAt: sort }, // utama (lama → baru)
+      { id: "asc" },       // fallback biar stabil
+    ],
+
+    skip,
+    take: limit,
+  }),
+
+  prisma.wipIncoming.count({
+    where: whereCondition,
+  }),
+]);
+
+    // =====================
+    // RESPONSE
+    // =====================
+    return NextResponse.json({
+      data,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
     });
-
-    return NextResponse.json(data);
 
   } catch (error) {
     console.error("WIP INCOMING ERROR:", error);
@@ -75,7 +98,7 @@ export async function GET(req: Request) {
 
 
 // =====================
-// POST INCOMING (UPDATED 🔥)
+// POST INCOMING (STABLE 🔥)
 // =====================
 export async function POST(req: Request) {
   try {
@@ -87,14 +110,10 @@ export async function POST(req: Request) {
     const remark = body.remark?.trim();
     const type = body.type;
 
-    // 🔥 HANDLE DATE LEBIH AMAN
     const date = body.date ? new Date(body.date) : new Date();
-
     const parsedQty = Number(body.qty);
 
-    // =====================
     // VALIDASI
-    // =====================
     if (!computerCode || !createdBy || !type) {
       return NextResponse.json(
         { error: "Data tidak lengkap!" },
@@ -117,7 +136,7 @@ export async function POST(req: Request) {
     }
 
     // =====================
-    // CARI PRODUCT (TERBARU 🔥)
+    // CARI PRODUCT TERBARU
     // =====================
     const product = await prisma.wipProduct.findFirst({
       where: {
@@ -128,7 +147,7 @@ export async function POST(req: Request) {
         type: type,
       },
       orderBy: {
-        createdAt: "desc", // ambil versi terbaru
+        createdAt: "desc",
       },
     });
 
@@ -143,8 +162,6 @@ export async function POST(req: Request) {
     // TRANSACTION
     // =====================
     const result = await prisma.$transaction(async (tx) => {
-
-      // INSERT INCOMING
       const incoming = await tx.wipIncoming.create({
         data: {
           productId: product.id,
@@ -156,7 +173,6 @@ export async function POST(req: Request) {
         },
       });
 
-      // AMBIL STOCK
       const stock = await tx.wipStock.findUnique({
         where: { productId: product.id },
       });
@@ -165,11 +181,9 @@ export async function POST(req: Request) {
       const currentIncoming = stock?.incomingQty || 0;
       const currentOutgoing = stock?.outgoingQty || 0;
 
-      // HITUNG ULANG
       const newIncoming = currentIncoming + parsedQty;
       const newFinal = initial + newIncoming - currentOutgoing;
 
-      // UPSERT STOCK
       await tx.wipStock.upsert({
         where: { productId: product.id },
         update: {
