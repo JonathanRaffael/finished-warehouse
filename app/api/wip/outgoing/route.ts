@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 
 // =====================
-// GET OUTGOING (UPDATED 🔥)
+// GET OUTGOING (FINAL 🚀)
 // =====================
 export async function GET(req: Request) {
   try {
@@ -10,10 +11,15 @@ export async function GET(req: Request) {
 
     const type = searchParams.get("type");
     const search = searchParams.get("search")?.trim() || "";
-    const limit = Number(searchParams.get("limit")) || 100;
 
-    // 🔥 OPTIONAL: sort (default: asc = urutan input)
-    const sort = searchParams.get("sort") === "desc" ? "desc" : "asc";
+    // ✅ PAGINATION
+    const page = Number(searchParams.get("page")) || 1;
+    const limit = Number(searchParams.get("limit")) || 20;
+    const skip = (page - 1) * limit;
+
+    // ✅ SORT
+    const sort =
+      searchParams.get("sort") === "desc" ? "desc" : "asc";
 
     if (!type) {
       return NextResponse.json(
@@ -22,47 +28,64 @@ export async function GET(req: Request) {
       );
     }
 
-    const data = await prisma.wipOutgoing.findMany({
-      where: {
-        product: {
-          type: type as any,
-          ...(search && {
-            OR: [
-              {
-                productName: {
-                  contains: search,
-                  mode: "insensitive",
-                },
-              },
-              {
-                partNo: {
-                  contains: search,
-                  mode: "insensitive",
-                },
-              },
-              {
-                computerCode: {
-                  contains: search,
-                  mode: "insensitive",
-                },
-              },
-            ],
-          }),
+    // =====================
+    // ✅ WHERE (TYPE SAFE)
+    // =====================
+    const productFilter: Prisma.WipProductWhereInput = {
+      type: type as any,
+    };
+
+    if (search) {
+      productFilter.OR = [
+        { productName: { contains: search, mode: "insensitive" } },
+        { partNo: { contains: search, mode: "insensitive" } },
+        { computerCode: { contains: search, mode: "insensitive" } },
+      ];
+    }
+
+    const whereCondition: Prisma.WipOutgoingWhereInput = {
+      product: {
+        is: productFilter,
+      },
+    };
+
+    // =====================
+    // QUERY DATA + TOTAL
+    // =====================
+    const [data, total] = await prisma.$transaction([
+      prisma.wipOutgoing.findMany({
+        where: whereCondition,
+        include: {
+          product: true,
         },
-      },
-      include: {
-        product: true,
-      },
 
-      // 🔥 FIX UTAMA: pakai createdAt (urutan asli)
-      orderBy: {
-        createdAt: sort,
-      },
+        // ✅ SORT STABIL (ANTI BUG)
+        orderBy: [
+          { createdAt: sort },
+          { id: "asc" },
+        ],
 
-      take: limit,
+        skip,
+        take: limit,
+      }),
+
+      prisma.wipOutgoing.count({
+        where: whereCondition,
+      }),
+    ]);
+
+    // =====================
+    // RESPONSE
+    // =====================
+    return NextResponse.json({
+      data,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
     });
-
-    return NextResponse.json(data);
 
   } catch (error) {
     console.error("WIP OUTGOING ERROR:", error);
@@ -73,9 +96,8 @@ export async function GET(req: Request) {
   }
 }
 
-
 // =====================
-// POST OUTGOING (UPDATED 🔥)
+// POST OUTGOING (FINAL 🔥)
 // =====================
 export async function POST(req: Request) {
   try {
@@ -113,7 +135,7 @@ export async function POST(req: Request) {
     }
 
     // =====================
-    // CARI PRODUCT (TERBARU 🔥)
+    // CARI PRODUCT TERBARU
     // =====================
     const product = await prisma.wipProduct.findFirst({
       where: {
@@ -140,7 +162,7 @@ export async function POST(req: Request) {
     // =====================
     const result = await prisma.$transaction(async (tx) => {
 
-      // AMBIL STOCK
+      // GET STOCK
       const stock = await tx.wipStock.findUnique({
         where: { productId: product.id },
       });
@@ -149,11 +171,15 @@ export async function POST(req: Request) {
       const currentIncoming = stock?.incomingQty || 0;
       const currentOutgoing = stock?.outgoingQty || 0;
 
-      const currentFinal = initial + currentIncoming - currentOutgoing;
+      const currentFinal =
+        initial + currentIncoming - currentOutgoing;
 
-      // VALIDASI STOCK
+      // ❗ VALIDASI STOCK
       if (currentFinal < qty) {
-        throw new Error("Stock tidak cukup!");
+        return NextResponse.json(
+          { error: "Stock tidak cukup!" },
+          { status: 400 }
+        );
       }
 
       // INSERT OUTGOING
@@ -166,9 +192,10 @@ export async function POST(req: Request) {
         },
       });
 
-      // HITUNG ULANG
+      // HITUNG ULANG STOCK
       const newOutgoing = currentOutgoing + qty;
-      const newFinal = initial + currentIncoming - newOutgoing;
+      const newFinal =
+        initial + currentIncoming - newOutgoing;
 
       // UPDATE STOCK
       await tx.wipStock.upsert({

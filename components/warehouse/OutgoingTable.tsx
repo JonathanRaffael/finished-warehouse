@@ -30,6 +30,11 @@ export default function OutgoingTable({ type }: { type: "HT" | "HK" }) {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
 
+  // ✅ NEW: pagination
+  const [pagination, setPagination] = useState<any>(null);
+  const [page, setPage] = useState(1);
+  const limit = 10;
+
   const [showForm, setShowForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -42,24 +47,30 @@ export default function OutgoingTable({ type }: { type: "HT" | "HK" }) {
   });
 
   // =====================
-  // 🔥 DEBOUNCE (DITAMBAH)
+  // DEBOUNCE
   // =====================
   useEffect(() => {
     const t = setTimeout(() => {
       setDebouncedSearch(search);
+      setPage(1); // reset page
     }, 300);
     return () => clearTimeout(t);
   }, [search]);
 
   // =====================
-  // FETCH DATA
+  // FETCH DATA (UPDATED)
   // =====================
   const fetchData = () => {
     setLoading(true);
 
-    fetch(`/api/wip/outgoing?type=${type}`)
+    fetch(
+      `/api/wip/outgoing?type=${type}&page=${page}&limit=${limit}&search=${debouncedSearch}`
+    )
       .then((res) => res.json())
-      .then((res) => setData(res))
+      .then((res) => {
+        setData(res.data);
+        setPagination(res.pagination);
+      })
       .finally(() => setLoading(false));
   };
 
@@ -82,24 +93,7 @@ export default function OutgoingTable({ type }: { type: "HT" | "HK" }) {
   useEffect(() => {
     fetchData();
     fetchProducts();
-  }, [type]);
-
-  // =====================
-  // FILTER
-  // =====================
-  const filteredData = useMemo(() => {
-    return data.filter((item) =>
-      [
-        item.product.productName,
-        item.product.partNo,
-        item.product.computerCode,
-        item.createdBy,
-      ]
-        .join(" ")
-        .toLowerCase()
-        .includes(debouncedSearch.toLowerCase())
-    );
-  }, [data, debouncedSearch]);
+  }, [type, page, debouncedSearch]);
 
   // =====================
   // SUBMIT
@@ -187,7 +181,7 @@ export default function OutgoingTable({ type }: { type: "HT" | "HK" }) {
         />
 
         <span className="text-xs text-slate-400">
-          Showing {filteredData.length} of {data.length} items
+          Showing {data.length} of {pagination?.total || 0} items
         </span>
       </div>
 
@@ -223,14 +217,14 @@ export default function OutgoingTable({ type }: { type: "HT" | "HK" }) {
                       ))}
                     </td>
                   </tr>
-                ) : filteredData.length === 0 ? (
+                ) : data.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="text-center py-10 text-slate-400">
                       No data found
                     </td>
                   </tr>
                 ) : (
-                  filteredData.map((item, i) => (
+                  data.map((item, i) => (
                     <tr
                       key={item.id}
                       className={`border-b transition hover:bg-slate-50 ${
@@ -270,7 +264,34 @@ export default function OutgoingTable({ type }: { type: "HT" | "HK" }) {
         </div>
       </div>
 
-      {/* MODAL (SEMUA FITUR TETAP ADA) */}
+      {/* PAGINATION (TAMBAHAN SAJA) */}
+      {pagination && (
+        <div className="px-4 flex items-center justify-between">
+          <span className="text-sm text-slate-500">
+            Page {pagination.page} of {pagination.totalPages}
+          </span>
+
+          <div className="flex gap-2">
+            <button
+              disabled={page === 1}
+              onClick={() => setPage(page - 1)}
+              className="px-3 py-1 border rounded disabled:opacity-50"
+            >
+              Prev
+            </button>
+
+            <button
+              disabled={page === pagination.totalPages}
+              onClick={() => setPage(page + 1)}
+              className="px-3 py-1 border rounded disabled:opacity-50"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL (100% ASLI, TIDAK DIUBAH) */}
       {showForm && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl p-6 w-[420px] space-y-5 shadow-xl">
@@ -293,7 +314,6 @@ export default function OutgoingTable({ type }: { type: "HT" | "HK" }) {
                 }
               />
 
-              {/* COMPUTER CODE */}
               <div className="space-y-1">
                 <input
                   placeholder="Type Computer Code (e.g: ABC123...)"
@@ -321,7 +341,6 @@ export default function OutgoingTable({ type }: { type: "HT" | "HK" }) {
                 </p>
               </div>
 
-              {/* AUTO INFO */}
               <div className="bg-slate-50 border rounded-lg p-3 text-sm">
                 {form.productId ? (
                   (() => {
