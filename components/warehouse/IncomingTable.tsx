@@ -128,6 +128,13 @@ export default function IncomingTable({ type }: { type: "HT" | "HK" }) {
   }, [data, debouncedSearch]);
 
   // =====================
+// 🔥 TOTAL QTY RESULT
+// =====================
+const totalQty = useMemo(() => {
+  return filteredData.reduce((sum, item) => sum + item.qty, 0);
+}, [filteredData]);
+
+  // =====================
   // SUBMIT
   // =====================
   const handleSubmit = async () => {
@@ -207,19 +214,27 @@ export default function IncomingTable({ type }: { type: "HT" | "HK" }) {
         </button>
       </div>
 
-      {/* SEARCH */}
-      <div className="px-4 flex items-center gap-4">
-        <input
-          placeholder="Search product, code, responsible..."
-          className="border rounded-lg px-4 py-2.5 w-[260px] text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+     {/* SEARCH */}
+<div className="px-4 flex items-center gap-4">
+  <input
+    placeholder="Search product, code, responsible..."
+    className="border rounded-lg px-4 py-2.5 w-[260px] text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+    value={search}
+    onChange={(e) => setSearch(e.target.value)}
+  />
 
-        <span className="text-xs text-slate-400">
-          Showing {filteredData.length} of {total} items
-        </span>
-      </div>
+  <div className="flex items-center gap-3 text-xs">
+    <span className="text-slate-400">
+      Showing {filteredData.length} of {total} items
+    </span>
+
+    {debouncedSearch && (
+      <span className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full border border-blue-200 font-medium">
+        Total Qty: {totalQty.toLocaleString()}
+      </span>
+    )}
+  </div>
+</div>
 
       {/* TABLE */}
       <div className="px-4">
