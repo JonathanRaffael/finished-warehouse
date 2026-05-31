@@ -28,6 +28,7 @@ enum DeflashingStatus {
   PENDING
   DONE
 }
+
 enum WipProductionType {
   HT
   HK
@@ -37,10 +38,10 @@ enum WipProductionType {
 // USER
 //
 model User {
-  id        String   @id @default(cuid())
-  username  String   @unique
-  password  String
-  role      UserRole @default(WAREHOUSE)
+  id       String   @id @default(cuid())
+  username String   @unique
+  password String
+  role     UserRole @default(WAREHOUSE)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -50,14 +51,14 @@ model User {
 // PRODUCT MASTER
 //
 model Product {
-  id             String   @id @default(cuid())
-  computerCode   String   @unique @db.VarChar(50)
-  partNo         String   @db.VarChar(50)
-  productName    String   @db.VarChar(255)
+  id           String @id @default(cuid())
+  computerCode String @unique @db.VarChar(50)
+  partNo       String @db.VarChar(50)
+  productName  String @db.VarChar(255)
 
   productionType ProductionType @default(HT)
-  location       String? @db.VarChar(100)
-  initialStock   Int     @default(0)
+  location       String?        @db.VarChar(100)
+  initialStock   Int            @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -87,15 +88,15 @@ model IncomingTransaction {
   remainingQty Int?
   status       String? @default("OPEN")
 
-  batch String? @db.VarChar(50)
-  responsiblePerson String @db.VarChar(100)
+  batch             String? @db.VarChar(50)
+  responsiblePerson String  @db.VarChar(100)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   product Product @relation(fields: [computerCode], references: [computerCode], onDelete: Cascade)
 
-  afterOQC    AfterOQCTransaction[]
+  afterOQC AfterOQCTransaction[]
 
   outHistories IncomingOutHistory[] // 🔥 INI WAJIB
 
@@ -107,9 +108,9 @@ model IncomingOutHistory {
   id String @id @default(cuid())
 
   incomingId String
-  incoming IncomingTransaction @relation(fields: [incomingId], references: [id], onDelete: Cascade)
+  incoming   IncomingTransaction @relation(fields: [incomingId], references: [id], onDelete: Cascade)
 
-  qtyOut Int
+  qtyOut            Int
   responsiblePerson String
 
   createdAt DateTime @default(now())
@@ -185,7 +186,7 @@ model OutgoingTransaction {
   partNo       String? @db.VarChar(50)
   productName  String? @db.VarChar(255)
 
-  qtyOut Int
+  qtyOut            Int
   responsiblePerson String @db.VarChar(100)
 
   remark String? @db.VarChar(255)
@@ -223,13 +224,14 @@ model Deflashing {
 
   batchNo String? @db.VarChar(50)
 
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
   completedAt DateTime?
 
   logs DeflashingProcessLog[]
 
   @@index([status])
 }
+
 model DeflashingProcessLog {
   id String @id @default(cuid())
 
@@ -253,13 +255,13 @@ model DeflashingProcessLog {
 // WIP PRODUCT MASTER
 //
 model WipProduct {
-  id           String @id @default(cuid())
+  id String @id @default(cuid())
 
   computerCode String @unique @db.VarChar(50)
   partNo       String @db.VarChar(50)
   productName  String @db.VarChar(255)
 
-  type         WipProductionType @default(HT)
+  type WipProductionType @default(HT)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -278,7 +280,7 @@ model WipProduct {
 model WipStock {
   id String @id @default(cuid())
 
-  productId String @unique
+  productId String     @unique
   product   WipProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   initialStock Int @default(0)
@@ -304,9 +306,9 @@ model WipIncoming {
 
   qty Int
 
-  createdBy String        // Responsible Person
-  ipqc      String?       // IPQC PIC ✅
-  remark    String?       // Remark ✅
+  createdBy String // Responsible Person
+  ipqc      String? // IPQC PIC ✅
+  remark    String? // Remark ✅
 
   createdAt DateTime @default(now())
 
@@ -327,11 +329,95 @@ model WipOutgoing {
 
   qty Int
 
-  remark String?
+  remark    String?
   createdBy String
 
   createdAt DateTime @default(now())
 
   @@index([productId])
   @@index([date])
+}
+
+enum RawMaterialStatus {
+  ACTIVE
+  EMPTY
+  EXPIRED
+}
+
+model RawMaterial {
+  id String @id @default(cuid())
+
+  materialCode String @unique @db.VarChar(50)
+  materialName String @db.VarChar(255)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  batches RawMaterialBatch[]
+
+  @@index([materialCode])
+}
+
+model RawMaterialBatch {
+  id String @id @default(cuid())
+
+  rawMaterialId String
+
+  rawMaterial RawMaterial @relation(fields: [rawMaterialId], references: [id], onDelete: Cascade)
+
+  incomingDate DateTime @default(now())
+
+  lotNo String @db.VarChar(100)
+
+  incomingQty Int @default(0)
+
+  incomingWeight Float @default(0)
+
+  spq Float @default(0)
+
+  balanceQty Int @default(0)
+
+  balanceWeight Float @default(0)
+
+  warehouse String @db.VarChar(50)
+
+  expDate DateTime
+
+  status RawMaterialStatus @default(ACTIVE)
+
+  createdBy String @db.VarChar(100)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  usages RawMaterialUsage[]
+
+  @@index([rawMaterialId])
+  @@index([lotNo])
+  @@index([warehouse])
+  @@index([expDate])
+  @@index([status])
+}
+
+model RawMaterialUsage {
+  id String @id @default(cuid())
+
+  batchId String
+
+  batch RawMaterialBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  usageDate DateTime @default(now())
+
+  qtyUsed Int @default(0)
+
+  weightUsed Float @default(0)
+
+  remark String? @db.VarChar(255)
+
+  createdBy String @db.VarChar(100)
+
+  createdAt DateTime @default(now())
+
+  @@index([batchId])
+  @@index([usageDate])
 }

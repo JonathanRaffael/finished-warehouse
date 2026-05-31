@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+
 import {
   LayoutDashboard,
   Inbox,
@@ -13,8 +14,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Menu,
-  Wrench
+  Wrench,
+  Boxes
 } from 'lucide-react';
+
 import { cn } from '@/lib/utils';
 
 /* ================= ROLE BASED MENU ================= */
@@ -24,23 +27,64 @@ const menuByRole = {
     {
       title: 'MAIN',
       items: [
-        { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-        { label: 'WIP Dashboard', href: '/dashboard/wip', icon: LayoutDashboard }
+        {
+          label: 'Dashboard',
+          href: '/dashboard',
+          icon: LayoutDashboard
+        },
+
+        {
+          label: 'WIP Dashboard',
+          href: '/dashboard/wip',
+          icon: LayoutDashboard
+        },
+
+        // 🔥 RAW MATERIAL
+        {
+          label: 'Raw Material',
+          href: '/dashboard/raw-material',
+          icon: Boxes
+        }
       ],
     },
+
     {
       title: 'OPERATIONS',
       items: [
-        { label: 'Incoming', href: '/dashboard/incoming', icon: Inbox },
-        { label: 'After OQC', href: '/dashboard/after-oqc', icon: CheckCircle2 },
-        { label: 'Deflashing', href: '/dashboard/deflashing', icon: Wrench },
-        { label: 'Outgoing', href: '/dashboard/outgoing', icon: Send },
+        {
+          label: 'Incoming',
+          href: '/dashboard/incoming',
+          icon: Inbox
+        },
+
+        {
+          label: 'After OQC',
+          href: '/dashboard/after-oqc',
+          icon: CheckCircle2
+        },
+
+        {
+          label: 'Deflashing',
+          href: '/dashboard/deflashing',
+          icon: Wrench
+        },
+
+        {
+          label: 'Outgoing',
+          href: '/dashboard/outgoing',
+          icon: Send
+        },
       ],
     },
+
     {
       title: 'SYSTEM',
       items: [
-        { label: 'Master Data', href: '/dashboard/master-data', icon: Database },
+        {
+          label: 'Master Data',
+          href: '/dashboard/master-data',
+          icon: Database
+        },
       ],
     },
   ],
@@ -49,7 +93,11 @@ const menuByRole = {
     {
       title: 'OPERATIONS',
       items: [
-        { label: 'Deflashing', href: '/dashboard/deflashing', icon: Wrench },
+        {
+          label: 'Deflashing',
+          href: '/dashboard/deflashing',
+          icon: Wrench
+        },
       ],
     },
   ],
@@ -83,25 +131,38 @@ export function Sidebar() {
 
   useEffect(() => {
     const saved = localStorage.getItem('sidebar-collapsed');
-    if (saved) setCollapsed(saved === 'true');
+
+    if (saved) {
+      setCollapsed(saved === 'true');
+    }
 
     const handleResize = () => {
-      if (window.innerWidth < 1024) setCollapsed(true);
+      if (window.innerWidth < 1024) {
+        setCollapsed(true);
+      }
     };
 
     handleResize();
+
     window.addEventListener('resize', handleResize);
+
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('sidebar-collapsed', String(collapsed));
+    localStorage.setItem(
+      'sidebar-collapsed',
+      String(collapsed)
+    );
   }, [collapsed]);
 
   /* ================= LOGOUT ================= */
 
   const handleLogout = async () => {
-    await fetch('/api/auth/logout', { method: 'POST' });
+    await fetch('/api/auth/logout', {
+      method: 'POST'
+    });
+
     router.push('/login');
     router.refresh();
   };
@@ -134,47 +195,56 @@ export function Sidebar() {
         className={cn(
           'fixed lg:static inset-y-0 left-0 z-50 h-screen flex flex-col border-r bg-slate-50 transition-all duration-300 shadow-sm',
           collapsed ? 'w-16' : 'w-64',
-          mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+          mobileOpen
+            ? 'translate-x-0'
+            : '-translate-x-full lg:translate-x-0'
         )}
       >
         {/* ================= HEADER ================= */}
         <div className="relative flex items-center justify-between px-4 py-3 border-b bg-gradient-to-r from-white to-slate-50">
-  <div className="flex items-center gap-3">
-    <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white font-bold shadow">
-      HT
-    </div>
 
-    {!collapsed && (
-      <div className="flex flex-col leading-tight">
-        <p className="text-sm font-semibold text-slate-900">
-          PT Hang Tong
-        </p>
-        <p className="text-xs text-slate-500">
-          Warehouse System
-        </p>
-      </div>
-    )}
-  </div>
+          <div className="flex items-center gap-3">
 
-  {/* FLOATING COLLAPSE BUTTON */}
-  <button
-    onClick={() => setCollapsed(v => !v)}
-    className={cn(
-      'hidden lg:flex absolute -right-3 top-6 z-50 h-6 w-6 items-center justify-center rounded-full border bg-white shadow-md hover:bg-slate-100 transition'
-    )}
-  >
-    {collapsed ? (
-      <ChevronRight className="h-3 w-3" />
-    ) : (
-      <ChevronLeft className="h-3 w-3" />
-    )}
-  </button>
-</div>
+            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white font-bold shadow">
+              HT
+            </div>
+
+            {!collapsed && (
+              <div className="flex flex-col leading-tight">
+                <p className="text-sm font-semibold text-slate-900">
+                  PT Hang Tong
+                </p>
+
+                <p className="text-xs text-slate-500">
+                  Warehouse System
+                </p>
+              </div>
+            )}
+
+          </div>
+
+          {/* FLOATING COLLAPSE BUTTON */}
+          <button
+            onClick={() => setCollapsed(v => !v)}
+            className={cn(
+              'hidden lg:flex absolute -right-3 top-6 z-50 h-6 w-6 items-center justify-center rounded-full border bg-white shadow-md hover:bg-slate-100 transition'
+            )}
+          >
+            {collapsed ? (
+              <ChevronRight className="h-3 w-3" />
+            ) : (
+              <ChevronLeft className="h-3 w-3" />
+            )}
+          </button>
+
+        </div>
 
         {/* ================= NAV ================= */}
         <nav className="flex-1 px-2 py-4 space-y-4">
+
           {menus.map(section => (
             <div key={section.title}>
+
               {!collapsed && (
                 <p className="px-3 mb-2 text-xs font-semibold text-slate-400 uppercase tracking-wide">
                   {section.title}
@@ -182,15 +252,21 @@ export function Sidebar() {
               )}
 
               <div className="space-y-1">
+
                 {section.items.map(item => {
                   const isActive =
-  item.href === "/dashboard"
-    ? pathname === "/dashboard"
-    : pathname === item.href || pathname.startsWith(item.href + "/");
+                    item.href === '/dashboard'
+                      ? pathname === '/dashboard'
+                      : pathname === item.href ||
+                        pathname.startsWith(item.href + '/');
+
                   const Icon = item.icon;
 
                   return (
-                    <Link key={item.href} href={item.href}>
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                    >
                       <div
                         onClick={() => setMobileOpen(false)}
                         className={cn(
@@ -221,24 +297,33 @@ export function Sidebar() {
                             {item.label}
                           </span>
                         )}
+
                       </div>
                     </Link>
                   );
                 })}
+
               </div>
             </div>
           ))}
+
         </nav>
 
         {/* ================= FOOTER ================= */}
         <div className="border-t bg-white p-2">
+
           <button
             onClick={handleLogout}
             className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-red-50 hover:text-red-600 transition select-none"
           >
             <LogOut className="h-5 w-5 shrink-0" />
-            {!collapsed && <span>Logout</span>}
+
+            {!collapsed && (
+              <span>Logout</span>
+            )}
+
           </button>
+
         </div>
       </aside>
     </>
