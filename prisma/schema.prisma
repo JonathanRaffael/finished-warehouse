@@ -409,8 +409,16 @@ model RawMaterialUsage {
   usageDate DateTime @default(now())
 
   qtyUsed Int @default(0)
-
   weightUsed Float @default(0)
+
+  balanceQtyBefore Int
+  balanceQtyAfter Int
+
+  balanceWeightBefore Float
+  balanceWeightAfter Float
+
+  workOrder String? @db.VarChar(100)
+  machineNo String? @db.VarChar(50)
 
   remark String? @db.VarChar(255)
 
@@ -420,4 +428,5 @@ model RawMaterialUsage {
 
   @@index([batchId])
   @@index([usageDate])
+  @@index([createdBy])
 }

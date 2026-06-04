@@ -103,6 +103,10 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
 
+    console.log("=================================");
+    console.log("BODY:", body);
+    console.log("=================================");
+
     const computerCode = body.computerCode?.trim();
     const createdBy = body.createdBy?.trim();
     const type = body.type;
@@ -135,7 +139,7 @@ export async function POST(req: Request) {
     }
 
     // =====================
-    // CARI PRODUCT TERBARU
+    // CARI PRODUCT
     // =====================
     const product = await prisma.wipProduct.findFirst({
       where: {
@@ -143,12 +147,14 @@ export async function POST(req: Request) {
           equals: computerCode,
           mode: "insensitive",
         },
-        type: type,
+        type,
       },
       orderBy: {
         createdAt: "desc",
       },
     });
+
+    console.log("PRODUCT FOUND:", product);
 
     if (!product) {
       return NextResponse.json(
@@ -162,27 +168,43 @@ export async function POST(req: Request) {
     // =====================
     const result = await prisma.$transaction(async (tx) => {
 
-      // GET STOCK
       const stock = await tx.wipStock.findUnique({
-        where: { productId: product.id },
+        where: {
+          productId: product.id,
+        },
       });
+
+      console.log("STOCK:", stock);
 
       const initial = stock?.initialStock || 0;
       const currentIncoming = stock?.incomingQty || 0;
       const currentOutgoing = stock?.outgoingQty || 0;
 
       const currentFinal =
-        initial + currentIncoming - currentOutgoing;
+        initial +
+        currentIncoming -
+        currentOutgoing;
 
-      // ❗ VALIDASI STOCK
+      console.log("STOCK CALCULATION:", {
+        initial,
+        currentIncoming,
+        currentOutgoing,
+        currentFinal,
+        qty,
+      });
+
+      // =====================
+      // VALIDASI STOCK
+      // =====================
       if (currentFinal < qty) {
-        return NextResponse.json(
-          { error: "Stock tidak cukup!" },
-          { status: 400 }
+        throw new Error(
+          `Stock tidak cukup! Stock saat ini ${currentFinal}, request ${qty}`
         );
       }
 
+      // =====================
       // INSERT OUTGOING
+      // =====================
       const outgoing = await tx.wipOutgoing.create({
         data: {
           productId: product.id,
@@ -192,38 +214,67 @@ export async function POST(req: Request) {
         },
       });
 
-      // HITUNG ULANG STOCK
-      const newOutgoing = currentOutgoing + qty;
-      const newFinal =
-        initial + currentIncoming - newOutgoing;
+      console.log("OUTGOING CREATED:", outgoing);
 
+      // =====================
       // UPDATE STOCK
-      await tx.wipStock.upsert({
-        where: { productId: product.id },
-        update: {
-          outgoingQty: newOutgoing,
-          finalStock: newFinal,
-        },
-        create: {
-          productId: product.id,
-          initialStock: 0,
-          incomingQty: 0,
-          outgoingQty: qty,
-          finalStock: -qty,
-        },
-      });
+      // =====================
+      const newOutgoing =
+        currentOutgoing + qty;
+
+      const newFinal =
+        initial +
+        currentIncoming -
+        newOutgoing;
+
+      const updatedStock =
+        await tx.wipStock.upsert({
+          where: {
+            productId: product.id,
+          },
+          update: {
+            outgoingQty: newOutgoing,
+            finalStock: newFinal,
+          },
+          create: {
+            productId: product.id,
+            initialStock: 0,
+            incomingQty: 0,
+            outgoingQty: qty,
+            finalStock: -qty,
+          },
+        });
+
+      console.log(
+        "STOCK UPDATED:",
+        updatedStock
+      );
 
       return outgoing;
     });
 
+    console.log("=================================");
+    console.log("FINAL RESULT:", result);
+    console.log("=================================");
+
     return NextResponse.json(result);
 
   } catch (error: any) {
-    console.error("POST OUTGOING ERROR:", error);
+
+    console.error("=================================");
+    console.error("POST OUTGOING ERROR:");
+    console.error(error);
+    console.error("=================================");
 
     return NextResponse.json(
-      { error: error.message || "Failed insert outgoing" },
-      { status: 500 }
+      {
+        error:
+          error?.message ||
+          "Failed insert outgoing",
+      },
+      {
+        status: 500,
+      }
     );
   }
 }

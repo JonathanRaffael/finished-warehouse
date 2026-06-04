@@ -5,22 +5,63 @@ import {
 
 import { prisma } from "@/lib/prisma";
 
+/* =========================================================
+   GET USAGE HISTORY
+========================================================= */
+
+export async function GET() {
+  try {
+    const data =
+      await prisma.rawMaterialUsage.findMany({
+        include: {
+          batch: {
+            include: {
+              rawMaterial: true,
+            },
+          },
+        },
+
+        orderBy: {
+          usageDate: "desc",
+        },
+      });
+
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error(
+      "[RAW_MATERIAL_USAGE_GET_ERROR]",
+      error
+    );
+
+    return NextResponse.json(
+      {
+        message:
+          "Internal server error",
+      },
+      {
+        status: 500,
+      }
+    );
+  }
+}
+
+/* =========================================================
+   CREATE USAGE
+========================================================= */
+
 export async function POST(
   request: NextRequest
 ) {
-
   try {
-
     const body =
       await request.json();
 
     const {
       batchId,
-
       qtyUsed,
-
+      usageDate,
+      usageTime,
       remark,
-
       createdBy,
     } = body;
 
@@ -31,7 +72,6 @@ export async function POST(
       !qtyUsed ||
       !createdBy
     ) {
-
       return NextResponse.json(
         {
           message:
@@ -53,7 +93,6 @@ export async function POST(
       });
 
     if (!batch) {
-
       return NextResponse.json(
         {
           message:
@@ -65,30 +104,11 @@ export async function POST(
       );
     }
 
-    /* ================= EXPIRED VALIDATION ================= */
-
-    if (
-      new Date(batch.expDate) <
-      new Date()
-    ) {
-
-      return NextResponse.json(
-        {
-          message:
-            "Material already expired",
-        },
-        {
-          status: 400,
-        }
-      );
-    }
-
     /* ================= EMPTY VALIDATION ================= */
 
     if (
       batch.balanceQty <= 0
     ) {
-
       return NextResponse.json(
         {
           message:
@@ -106,11 +126,16 @@ export async function POST(
       Number(qtyUsed) >
       batch.balanceQty
     ) {
-
       return NextResponse.json(
         {
           message:
             "Qty exceeds available stock",
+
+          availableQty:
+            batch.balanceQty,
+
+          requestedQty:
+            Number(qtyUsed),
         },
         {
           status: 400,
@@ -118,26 +143,43 @@ export async function POST(
       );
     }
 
+    /* ================= USAGE DATETIME ================= */
+
+    const actualUsageDate =
+      usageDate && usageTime
+        ? new Date(
+            `${usageDate}T${usageTime}:00`
+          )
+        : usageDate
+          ? new Date(usageDate)
+          : new Date();
+
     /* ================= AUTO WEIGHT ================= */
 
     const weightUsed =
       Number(qtyUsed) *
       batch.spq;
 
-    /* ================= UPDATE BALANCE ================= */
+    /* ================= TRACEABILITY ================= */
 
-    const updatedQty =
+    const balanceQtyBefore =
+      batch.balanceQty;
+
+    const balanceWeightBefore =
+      batch.balanceWeight;
+
+    const balanceQtyAfter =
       batch.balanceQty -
       Number(qtyUsed);
 
-    const updatedWeight =
+    const balanceWeightAfter =
       batch.balanceWeight -
       weightUsed;
 
-    /* ================= AUTO STATUS ================= */
+    /* ================= STATUS ================= */
 
     const status =
-      updatedQty <= 0
+      balanceQtyAfter <= 0
         ? "EMPTY"
         : "ACTIVE";
 
@@ -146,13 +188,13 @@ export async function POST(
     const result =
       await prisma.$transaction(
         async (tx) => {
-
-          /* CREATE USAGE */
-
           const usage =
             await tx.rawMaterialUsage.create({
               data: {
                 batchId,
+
+                usageDate:
+                  actualUsageDate,
 
                 qtyUsed:
                   Number(
@@ -161,13 +203,19 @@ export async function POST(
 
                 weightUsed,
 
+                balanceQtyBefore,
+
+                balanceQtyAfter,
+
+                balanceWeightBefore,
+
+                balanceWeightAfter,
+
                 remark,
 
                 createdBy,
               },
             });
-
-          /* UPDATE BATCH */
 
           await tx.rawMaterialBatch.update({
             where: {
@@ -176,10 +224,10 @@ export async function POST(
 
             data: {
               balanceQty:
-                updatedQty,
+                balanceQtyAfter,
 
               balanceWeight:
-                updatedWeight,
+                balanceWeightAfter,
 
               status,
             },
@@ -200,11 +248,9 @@ export async function POST(
         status: 201,
       }
     );
-
   } catch (error) {
-
     console.error(
-      "[RAW_MATERIAL_USAGE_ERROR]",
+      "[RAW_MATERIAL_USAGE_POST_ERROR]",
       error
     );
 
