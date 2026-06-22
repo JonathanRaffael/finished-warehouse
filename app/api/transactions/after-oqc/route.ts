@@ -6,8 +6,12 @@ import { prisma } from '@/lib/prisma'
 export async function GET() {
   try {
     const data = await prisma.afterOQCTransaction.findMany({
-      where: { status: 'PENDING' },
-      orderBy: { createdAt: 'asc' }
+      where: {
+        status: 'PENDING'
+      },
+      orderBy: {
+        createdAt: 'asc'
+      }
     })
 
     return NextResponse.json(data)
@@ -16,14 +20,12 @@ export async function GET() {
   }
 }
 
-
 /* ================= POST : PROCESS QC ================= */
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
 
-    // 🔥 FIX: HARUS SAMA DENGAN DATABASE
     let source: 'INCOMING' | 'DEFLASHING' = 'INCOMING'
 
     const {
@@ -45,14 +47,17 @@ export async function POST(req: NextRequest) {
 
     let transactionId = id
 
-
     /* ================= MANUAL MODE ================= */
 
     if (!id) {
 
-      source = 'INCOMING' // 🔥 FIX
+      source = 'INCOMING'
 
-      const remaining = (Number(beforeQty) || 0) - finalAfter
+      const processedQty = finalAfter + finalNg
+
+      const remaining =
+        (Number(beforeQty) || 0) - processedQty
+
       const safeRemaining = Math.max(remaining, 0)
 
       const created = await prisma.afterOQCTransaction.create({
@@ -70,11 +75,13 @@ export async function POST(req: NextRequest) {
 
           responsiblePerson: responsiblePerson || null,
 
-          status: safeRemaining <= 0 ? 'DONE' : 'PENDING',
+          status: safeRemaining <= 0
+            ? 'DONE'
+            : 'PENDING',
 
           incomingId: null,
 
-          source // ✅ FIX (UPPERCASE)
+          source
         }
       })
 
@@ -97,39 +104,53 @@ export async function POST(req: NextRequest) {
       })
     }
 
-
     /* ================= QUEUE MODE ================= */
 
     const existing = await prisma.afterOQCTransaction.findUnique({
-      where: { id }
+      where: {
+        id
+      }
     })
 
     if (!existing) {
       return NextResponse.json(
-        { message: 'Transaction not found' },
-        { status: 404 }
+        {
+          message: 'Transaction not found'
+        },
+        {
+          status: 404
+        }
       )
     }
 
-    // 🔥 FIX: DETECT SOURCE DENGAN UPPERCASE
     if (existing.incomingId) {
       source = 'INCOMING'
     } else {
       source = 'DEFLASHING'
     }
 
-    if (finalAfter > existing.beforeQty) {
+    const processedQty = finalAfter + finalNg
+
+    if (processedQty > existing.beforeQty) {
       return NextResponse.json(
-        { message: 'OK qty exceeds remaining' },
-        { status: 400 }
+        {
+          message: 'Process qty exceeds remaining'
+        },
+        {
+          status: 400
+        }
       )
     }
 
-    const remaining = existing.beforeQty - finalAfter
+    const remaining =
+      existing.beforeQty - processedQty
+
     const safeRemaining = Math.max(remaining, 0)
 
-    const status = safeRemaining <= 0 ? 'DONE' : 'PENDING'
-
+    const status =
+      safeRemaining <= 0
+        ? 'DONE'
+        : 'PENDING'
 
     /* ================= SAVE LOG ================= */
 
@@ -143,31 +164,32 @@ export async function POST(req: NextRequest) {
       }
     })
 
-
     /* ================= UPDATE TRANSACTION ================= */
 
     await prisma.afterOQCTransaction.update({
-      where: { id },
+      where: {
+        id
+      },
       data: {
         beforeQty: safeRemaining,
 
         afterQty: {
           increment: finalAfter
         },
+
         ngQty: {
           increment: finalNg
         },
+
         spareQty: {
           increment: finalSpare
         },
 
         responsiblePerson,
         status,
-
-        source // ✅ FIX (UPPERCASE)
+        source
       }
     })
-
 
     return NextResponse.json({
       success: true,
@@ -180,8 +202,12 @@ export async function POST(req: NextRequest) {
     console.error('[After OQC POST]', error)
 
     return NextResponse.json(
-      { message: 'Internal server error' },
-      { status: 500 }
+      {
+        message: 'Internal server error'
+      },
+      {
+        status: 500
+      }
     )
   }
 }
