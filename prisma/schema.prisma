@@ -136,6 +136,7 @@ model AfterOQCTransaction {
   afterQty  Int @default(0)
   ngQty     Int @default(0)
   spareQty  Int @default(0)
+  looseQty  Int @default(0)
 
   status QCStatus @default(PENDING)
 
@@ -157,17 +158,15 @@ model AfterOQCTransaction {
   @@index([status])
 }
 
-//
-// QC DETAIL LOG
-//
 model AfterOQCLog {
   id String @id @default(cuid())
 
   afterOQCId String
-  afterOQC   AfterOQCTransaction @relation(fields: [afterOQCId], references: [id], onDelete: Cascade)
+  afterOQC AfterOQCTransaction @relation(fields: [afterOQCId], references: [id], onDelete: Cascade)
 
-  okQty    Int @default(0)
-  ngQty    Int @default(0)
+  okQty Int @default(0)
+  ngQty Int @default(0)
+  looseQty Int @default(0)
   spareQty Int @default(0)
 
   responsiblePerson String? @db.VarChar(100)
@@ -408,14 +407,14 @@ model RawMaterialUsage {
 
   usageDate DateTime @default(now())
 
-  qtyUsed Int @default(0)
+  qtyUsed    Int   @default(0)
   weightUsed Float @default(0)
 
   balanceQtyBefore Int
-  balanceQtyAfter Int
+  balanceQtyAfter  Int
 
   balanceWeightBefore Float
-  balanceWeightAfter Float
+  balanceWeightAfter  Float
 
   workOrder String? @db.VarChar(100)
   machineNo String? @db.VarChar(50)

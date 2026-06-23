@@ -37,12 +37,14 @@ export async function POST(req: NextRequest) {
       beforeQty,
       afterQty,
       ngQty,
+      looseQty,
       spareQty,
       responsiblePerson
     } = body
 
     const finalAfter = Math.max(Number(afterQty) || 0, 0)
     const finalNg = Math.max(Number(ngQty) || 0, 0)
+    const finalLoose = Math.max(Number(looseQty) || 0, 0)
     const finalSpare = Math.max(Number(spareQty) || 0, 0)
 
     let transactionId = id
@@ -50,10 +52,13 @@ export async function POST(req: NextRequest) {
     /* ================= MANUAL MODE ================= */
 
     if (!id) {
-
       source = 'INCOMING'
 
-      const processedQty = finalAfter + finalNg
+      const processedQty =
+        finalAfter +
+        finalNg +
+        finalLoose +
+        finalSpare
 
       const remaining =
         (Number(beforeQty) || 0) - processedQty
@@ -71,13 +76,15 @@ export async function POST(req: NextRequest) {
 
           afterQty: finalAfter,
           ngQty: finalNg,
+          looseQty: finalLoose,
           spareQty: finalSpare,
 
           responsiblePerson: responsiblePerson || null,
 
-          status: safeRemaining <= 0
-            ? 'DONE'
-            : 'PENDING',
+          status:
+            safeRemaining <= 0
+              ? 'DONE'
+              : 'PENDING',
 
           incomingId: null,
 
@@ -92,6 +99,7 @@ export async function POST(req: NextRequest) {
           afterOQCId: transactionId,
           okQty: finalAfter,
           ngQty: finalNg,
+          looseQty: finalLoose,
           spareQty: finalSpare,
           responsiblePerson
         }
@@ -129,7 +137,11 @@ export async function POST(req: NextRequest) {
       source = 'DEFLASHING'
     }
 
-    const processedQty = finalAfter + finalNg
+    const processedQty =
+      finalAfter +
+      finalNg +
+      finalLoose +
+      finalSpare
 
     if (processedQty > existing.beforeQty) {
       return NextResponse.json(
@@ -159,6 +171,7 @@ export async function POST(req: NextRequest) {
         afterOQCId: id,
         okQty: finalAfter,
         ngQty: finalNg,
+        looseQty: finalLoose,
         spareQty: finalSpare,
         responsiblePerson
       }
@@ -181,6 +194,10 @@ export async function POST(req: NextRequest) {
           increment: finalNg
         },
 
+        looseQty: {
+          increment: finalLoose
+        },
+
         spareQty: {
           increment: finalSpare
         },
@@ -196,9 +213,7 @@ export async function POST(req: NextRequest) {
       remaining: safeRemaining,
       status
     })
-
   } catch (error) {
-
     console.error('[After OQC POST]', error)
 
     return NextResponse.json(
@@ -211,3 +226,4 @@ export async function POST(req: NextRequest) {
     )
   }
 }
+
