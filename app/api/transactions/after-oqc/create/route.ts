@@ -25,19 +25,7 @@ export async function POST(req: NextRequest) {
     if (qty > incoming.remainingQty)
       throw new Error('Qty melebihi remaining incoming')
 
-    /* ================= ANTI DOUBLE QC ================= */
-
-    const existingPending = await prisma.afterOQCTransaction.findFirst({
-      where: {
-        incomingId,
-        status: 'PENDING'
-      }
-    })
-
-    if (existingPending) {
-      throw new Error('Masih ada QC yang belum selesai')
-    }
-
+    
     /* ================= CREATE QC ================= */
 
     const afterOQC = await prisma.afterOQCTransaction.create({
