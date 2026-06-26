@@ -137,6 +137,7 @@ model AfterOQCTransaction {
   ngQty     Int @default(0)
   spareQty  Int @default(0)
   looseQty  Int @default(0)
+  otherQty  Int @default(0)
 
   status QCStatus @default(PENDING)
 
@@ -168,6 +169,7 @@ model AfterOQCLog {
   ngQty Int @default(0)
   looseQty Int @default(0)
   spareQty Int @default(0)
+  otherQty Int @default(0)
 
   responsiblePerson String? @db.VarChar(100)
 

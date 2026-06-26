@@ -41,6 +41,7 @@ export function AfterOQCForm({ onSuccess, selectedQueue, sourceType }: AfterOQCF
   const [ng, setNg] = useState<string>('0')
   const [loose, setLoose] = useState<string>('0')
   const [spare, setSpare] = useState<string>('0')
+  const [other, setOther] = useState<string>('0')
 
   const [responsiblePerson, setResponsiblePerson] = useState('')
   const [loading, setLoading] = useState(false)
@@ -58,6 +59,7 @@ export function AfterOQCForm({ onSuccess, selectedQueue, sourceType }: AfterOQCF
   const ngNumber = Number(ng || 0)
   const looseNumber = Number(loose || 0)
   const spareNumber = Number(spare || 0)
+  const otherNumber = Number(other || 0)
 
   /* ================= PRODUCT LOOKUP ================= */
 
@@ -121,6 +123,7 @@ export function AfterOQCForm({ onSuccess, selectedQueue, sourceType }: AfterOQCF
       setNg('0')
       setLoose('0')
       setSpare('0')
+      setOther('0')
 
     }
 
@@ -132,7 +135,8 @@ export function AfterOQCForm({ onSuccess, selectedQueue, sourceType }: AfterOQCF
   okNumber +
   ngNumber +
   looseNumber +
-  spareNumber
+  spareNumber +
+  otherNumber
 
   const finalStock = okNumber + spareNumber
 
@@ -149,7 +153,8 @@ export function AfterOQCForm({ onSuccess, selectedQueue, sourceType }: AfterOQCF
     okNumber < 0 ||
     looseNumber < 0 ||
     ngNumber < 0 ||
-    spareNumber < 0
+    spareNumber < 0 ||
+    otherNumber < 0
 
   /* ================= SUBMIT ================= */
 
@@ -173,6 +178,7 @@ export function AfterOQCForm({ onSuccess, selectedQueue, sourceType }: AfterOQCF
   ngQty: ngNumber,
   looseQty: looseNumber,
   spareQty: spareNumber,
+  otherQty: otherNumber,
   finalStock,
   responsiblePerson,
   source:
@@ -198,6 +204,8 @@ export function AfterOQCForm({ onSuccess, selectedQueue, sourceType }: AfterOQCF
       setNg('0')
       setLoose('0')
       setSpare('0')
+      setOther('0')
+      
       setResponsiblePerson('')
 
       onSuccess()
@@ -273,12 +281,12 @@ export function AfterOQCForm({ onSuccess, selectedQueue, sourceType }: AfterOQCF
 
 {/* QC INPUT */}
 
-<div className="grid grid-cols-5 gap-4">
+<div className="grid grid-cols-6 gap-4">
+
+  {/* Before */}
 
   <div>
-    <label className="text-xs text-slate-500">
-      Before
-    </label>
+    <label className="text-xs text-slate-500">Before</label>
 
     <Input
       type="number"
@@ -289,10 +297,10 @@ export function AfterOQCForm({ onSuccess, selectedQueue, sourceType }: AfterOQCF
     />
   </div>
 
+  {/* OK */}
+
   <div>
-    <label className="text-xs text-slate-500">
-      OK
-    </label>
+    <label className="text-xs text-slate-500">OK</label>
 
     <Input
       type="number"
@@ -306,10 +314,10 @@ export function AfterOQCForm({ onSuccess, selectedQueue, sourceType }: AfterOQCF
     />
   </div>
 
+  {/* NG */}
+
   <div>
-    <label className="text-xs text-slate-500">
-      NG
-    </label>
+    <label className="text-xs text-slate-500">NG</label>
 
     <Input
       type="number"
@@ -323,10 +331,10 @@ export function AfterOQCForm({ onSuccess, selectedQueue, sourceType }: AfterOQCF
     />
   </div>
 
+  {/* Loose */}
+
   <div>
-    <label className="text-xs text-slate-500">
-      Loose
-    </label>
+    <label className="text-xs text-slate-500">Loose</label>
 
     <Input
       type="number"
@@ -340,10 +348,27 @@ export function AfterOQCForm({ onSuccess, selectedQueue, sourceType }: AfterOQCF
     />
   </div>
 
+  {/* Other */}
+
   <div>
-    <label className="text-xs text-slate-500">
-      {spareLabel}
-    </label>
+    <label className="text-xs text-slate-500">Other</label>
+
+    <Input
+      type="number"
+      value={other}
+      onChange={e => {
+        const value = e.target.value
+        if (value === '' || Number(value) >= 0) {
+          setOther(value)
+        }
+      }}
+    />
+  </div>
+
+  {/* Buffer / Spare */}
+
+  <div>
+    <label className="text-xs text-slate-500">{spareLabel}</label>
 
     <Input
       type="number"
@@ -366,7 +391,7 @@ export function AfterOQCForm({ onSuccess, selectedQueue, sourceType }: AfterOQCF
   <div className="flex justify-between text-xs text-slate-500">
 
     <span>
-      Process (OK + NG + Loose + {spareLabel})
+      Process (OK + NG + Loose + {spareLabel} + Other)
     </span>
 
     <span>

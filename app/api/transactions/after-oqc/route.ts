@@ -39,6 +39,7 @@ export async function POST(req: NextRequest) {
       ngQty,
       looseQty,
       spareQty,
+      otherQty,
       responsiblePerson
     } = body
 
@@ -46,6 +47,7 @@ export async function POST(req: NextRequest) {
     const finalNg = Math.max(Number(ngQty) || 0, 0)
     const finalLoose = Math.max(Number(looseQty) || 0, 0)
     const finalSpare = Math.max(Number(spareQty) || 0, 0)
+    const finalOther = Math.max(Number(otherQty) || 0, 0)
 
     let transactionId = id
 
@@ -58,7 +60,8 @@ export async function POST(req: NextRequest) {
         finalAfter +
         finalNg +
         finalLoose +
-        finalSpare
+        finalSpare +
+        finalOther
 
       const remaining =
         (Number(beforeQty) || 0) - processedQty
@@ -78,6 +81,7 @@ export async function POST(req: NextRequest) {
           ngQty: finalNg,
           looseQty: finalLoose,
           spareQty: finalSpare,
+          otherQty: finalOther,
 
           responsiblePerson: responsiblePerson || null,
 
@@ -101,6 +105,7 @@ export async function POST(req: NextRequest) {
           ngQty: finalNg,
           looseQty: finalLoose,
           spareQty: finalSpare,
+          otherQty: finalOther,
           responsiblePerson
         }
       })
@@ -173,6 +178,7 @@ export async function POST(req: NextRequest) {
         ngQty: finalNg,
         looseQty: finalLoose,
         spareQty: finalSpare,
+        otherQty: finalOther,
         responsiblePerson
       }
     })
@@ -200,6 +206,10 @@ export async function POST(req: NextRequest) {
 
         spareQty: {
           increment: finalSpare
+        },
+
+        otherQty:{
+          increment: finalOther
         },
 
         responsiblePerson,

@@ -12,6 +12,7 @@ interface Transaction {
   ngQty: number
   looseQty?: number
   spareQty: number
+  otherQty?: number
   responsiblePerson: string | null
   afterOQC: {
     id: string
@@ -77,7 +78,8 @@ export function AfterOQCTable({ transactions, title }: Props) {
           after: 0,
           ng: 0,
           loose: 0,
-          spare: 0
+          spare: 0,
+          other: 0
         }
       }
 
@@ -87,6 +89,7 @@ export function AfterOQCTable({ transactions, title }: Props) {
       acc[queueId].ng += row.ngQty || 0
       acc[queueId].loose += row.looseQty || 0
       acc[queueId].spare += row.spareQty || 0
+      acc[queueId].other += row.otherQty || 0
 
       return acc
 
@@ -162,6 +165,7 @@ export function AfterOQCTable({ transactions, title }: Props) {
               <th className="px-4">NG</th>
               <th className="px-4">LOOSE</th>
               <th className="px-4">BUFFER</th>
+              <th className="px-4">OTHER</th>
               <th className="px-4">STOCK</th>
             </tr>
 
@@ -172,7 +176,7 @@ export function AfterOQCTable({ transactions, title }: Props) {
             {paginated.length === 0 ? (
 
               <tr>
-                <td colSpan={11} className="text-center py-10 text-slate-400">
+                <td colSpan={12} className="text-center py-10 text-slate-400">
                   No QC history
                 </td>
               </tr>
@@ -185,7 +189,8 @@ export function AfterOQCTable({ transactions, title }: Props) {
   row.after +
   row.ng +
   row.loose +
-  row.spare
+  row.spare +
+  row.other
                 const isDeflashing = row.source === 'DEFLASHING'
 
                 return (
@@ -234,13 +239,17 @@ export function AfterOQCTable({ transactions, title }: Props) {
                         {row.spare}
                       </td>
 
+                      <td className="px-4 py-2 font-bold text-purple-600">
+                        {row.other}
+                      </td>
+
                       <td
                         className="px-4 py-2 font-bold text-blue-600 cursor-pointer hover:underline"
                         onClick={() =>
                           setOpen(open === row.id ? null : row.id)
                         }
                       >
-                        {row.after + row.spare}
+                        {row.after + row.spare + row.other}
                       </td>
 
                     </tr>
@@ -249,7 +258,7 @@ export function AfterOQCTable({ transactions, title }: Props) {
 
                       <tr>
 
-                        <td colSpan={11} className="bg-slate-50 px-8 py-4">
+                        <td colSpan={12} className="bg-slate-50 px-8 py-4">
 
                           <p className="font-semibold mb-3 text-slate-600">
                             Inspection History
@@ -266,6 +275,7 @@ export function AfterOQCTable({ transactions, title }: Props) {
                                 <th className="border px-3 py-2">NG</th>
                                 <th className="border px-3 py-2">LOOSE</th>
                                 <th className="border px-3 py-2">BUFFER</th>
+                                <th className="border px-3 py-2">OTHER</th>
                                 <th className="border px-3 py-2">QC BY</th>
                               </tr>
 
@@ -285,7 +295,8 @@ export function AfterOQCTable({ transactions, title }: Props) {
                                     {(h.okQty || 0) +
  (h.ngQty || 0) +
  (h.looseQty || 0) +
- (h.spareQty || 0)}
+ (h.spareQty || 0) +
+ (h.otherQty || 0) }
                                   </td>
 
                                   <td className="border px-3 py-2 text-green-600">
@@ -302,6 +313,10 @@ export function AfterOQCTable({ transactions, title }: Props) {
 
                                   <td className="border px-3 py-2">
                                     {h.spareQty}
+                                  </td>
+
+                                  <td className="border px-3 py-2 text-purple-600">
+                                    {h.otherQty || 0}
                                   </td>
 
                                   <td className="border px-3 py-2">
