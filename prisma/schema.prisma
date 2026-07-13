@@ -135,7 +135,7 @@ model AfterOQCTransaction {
   beforeQty Int
   afterQty  Int @default(0)
   ngQty     Int @default(0)
-  spareQty  Int @default(0)
+  bufferQty Int @default(0)
   looseQty  Int @default(0)
   otherQty  Int @default(0)
 
@@ -146,9 +146,9 @@ model AfterOQCTransaction {
   responsiblePerson String? @db.VarChar(100)
 
   incomingId String?
-  incoming   IncomingTransaction? @relation(fields: [incomingId], references: [id], onDelete: Cascade)
+  incoming IncomingTransaction? @relation(fields: [incomingId], references: [id], onDelete: Cascade)
 
-  product Product @relation(fields: [computerCode], references: [computerCode], onDelete: Cascade)
+product Product @relation(fields: [computerCode], references: [computerCode], onDelete: Cascade)
 
   logs AfterOQCLog[]
 
@@ -163,12 +163,13 @@ model AfterOQCLog {
   id String @id @default(cuid())
 
   afterOQCId String
+
   afterOQC AfterOQCTransaction @relation(fields: [afterOQCId], references: [id], onDelete: Cascade)
 
   okQty Int @default(0)
   ngQty Int @default(0)
   looseQty Int @default(0)
-  spareQty Int @default(0)
+  bufferQty Int @default(0)
   otherQty Int @default(0)
 
   responsiblePerson String? @db.VarChar(100)
