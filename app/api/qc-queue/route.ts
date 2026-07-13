@@ -2,13 +2,10 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
 export async function GET() {
-
   try {
-
     /* ================= QC QUEUE FROM INCOMING ================= */
 
     const incomingQC = await prisma.afterOQCTransaction.findMany({
-
       where: {
         status: 'PENDING',
         source: 'INCOMING'
@@ -24,9 +21,8 @@ export async function GET() {
         partNo: true,
         productName: true,
         beforeQty: true,
-        batch: true        // ✅ TAMBAHKAN
+        batch: true
       }
-
     })
 
     const incomingQueue = incomingQC.map((q) => ({
@@ -34,18 +30,16 @@ export async function GET() {
       computerCode: q.computerCode,
       partNo: q.partNo,
       productName: q.productName,
-      batch: q.batch,      // ✅ GUNAKAN NILAI DARI DB
+      batch: q.batch,
       beforeQty: q.beforeQty,
       afterQty: 0,
       ngQty: 0,
-      spareQty: 0
+      bufferQty: 0
     }))
-
 
     /* ================= QC QUEUE FROM DEFLASHING ================= */
 
     const deflashingQC = await prisma.afterOQCTransaction.findMany({
-
       where: {
         status: 'PENDING',
         source: 'DEFLASHING'
@@ -61,9 +55,8 @@ export async function GET() {
         partNo: true,
         productName: true,
         beforeQty: true,
-        batch: true        // ✅ TAMBAHKAN
+        batch: true
       }
-
     })
 
     const deflashingQueue = deflashingQC.map((d) => ({
@@ -71,21 +64,18 @@ export async function GET() {
       computerCode: d.computerCode,
       partNo: d.partNo,
       productName: d.productName,
-      batch: d.batch,      // ✅ GUNAKAN NILAI DARI DB
+      batch: d.batch,
       beforeQty: d.beforeQty,
       afterQty: 0,
       ngQty: 0,
-      spareQty: 0
+      bufferQty: 0
     }))
-
 
     return NextResponse.json({
       incomingQueue,
       deflashingQueue
     })
-
   } catch (error) {
-
     console.error('[QC_QUEUE_ERROR]', error)
 
     return NextResponse.json(
@@ -93,9 +83,9 @@ export async function GET() {
         incomingQueue: [],
         deflashingQueue: []
       },
-      { status: 500 }
+      {
+        status: 500
+      }
     )
-
   }
-
 }

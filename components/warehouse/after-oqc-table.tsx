@@ -11,7 +11,7 @@ interface Transaction {
   okQty: number
   ngQty: number
   looseQty?: number
-  spareQty: number
+  bufferQty: number
   otherQty?: number
   responsiblePerson: string | null
   afterOQC: {
@@ -78,7 +78,7 @@ export function AfterOQCTable({ transactions, title }: Props) {
           after: 0,
           ng: 0,
           loose: 0,
-          spare: 0,
+          buffer: 0,
           other: 0
         }
       }
@@ -88,7 +88,7 @@ export function AfterOQCTable({ transactions, title }: Props) {
       acc[queueId].after += row.okQty || 0
       acc[queueId].ng += row.ngQty || 0
       acc[queueId].loose += row.looseQty || 0
-      acc[queueId].spare += row.spareQty || 0
+      acc[queueId].buffer += row.bufferQty || 0
       acc[queueId].other += row.otherQty || 0
 
       return acc
@@ -189,7 +189,7 @@ export function AfterOQCTable({ transactions, title }: Props) {
   row.after +
   row.ng +
   row.loose +
-  row.spare +
+  row.buffer +
   row.other
                 const isDeflashing = row.source === 'DEFLASHING'
 
@@ -236,7 +236,7 @@ export function AfterOQCTable({ transactions, title }: Props) {
                       </td>
 
                       <td className="px-4 py-2">
-                        {row.spare}
+                        {row.buffer}
                       </td>
 
                       <td className="px-4 py-2 font-bold text-purple-600">
@@ -249,7 +249,7 @@ export function AfterOQCTable({ transactions, title }: Props) {
                           setOpen(open === row.id ? null : row.id)
                         }
                       >
-                        {row.after + row.spare + row.other}
+                        {row.after + row.buffer + row.other}
                       </td>
 
                     </tr>
@@ -295,7 +295,7 @@ export function AfterOQCTable({ transactions, title }: Props) {
                                     {(h.okQty || 0) +
  (h.ngQty || 0) +
  (h.looseQty || 0) +
- (h.spareQty || 0) +
+ (h.bufferQty || 0) +
  (h.otherQty || 0) }
                                   </td>
 
@@ -312,7 +312,7 @@ export function AfterOQCTable({ transactions, title }: Props) {
                                   </td>
 
                                   <td className="border px-3 py-2">
-                                    {h.spareQty}
+                                    {h.bufferQty}
                                   </td>
 
                                   <td className="border px-3 py-2 text-purple-600">

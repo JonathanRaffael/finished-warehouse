@@ -66,16 +66,16 @@ export async function PATCH(
 
       // ✅ 1. SAVE PROCESS LOG (SELALU, termasuk parsial)
       await tx.deflashingProcessLog.create({
-        data: {
-          deflashingId: id,
-          batchNo: record.batchNo,
-          qtyOut,
-          ngQty,
-          spareQty: 0,
-          processedBy,
-          processedAt: new Date()
-        }
-      })
+  data: {
+    deflashingId: id,
+    batchNo: record.batchNo,
+    qtyOut,
+    ngQty,
+    bufferQty: 0,
+    processedBy,
+    processedAt: new Date()
+  }
+})
 
       // ✅ 2. UPDATE MAIN TABLE
       const updated = await tx.deflashing.update({
@@ -91,23 +91,23 @@ export async function PATCH(
       // ✅ 3. CREATE QC QUEUE (hanya jika ada OK)
       if (qtyOut > 0) {
         await tx.afterOQCTransaction.create({
-          data: {
-            computerCode: record.computerCode,
-            partNo: record.partNo,
-            productName: record.productName,
-            batch: record.batchNo,
+  data: {
+    computerCode: record.computerCode,
+    partNo: record.partNo,
+    productName: record.productName,
+    batch: record.batchNo,
 
-            beforeQty: qtyOut,
+    beforeQty: qtyOut,
 
-            afterQty: 0,
-            ngQty: 0,
-            spareQty: 0,
+    afterQty: 0,
+    ngQty: 0,
+    bufferQty: 0,
 
-            status: 'PENDING',
-            source: 'DEFLASHING',
-            responsiblePerson: processedBy
-          }
-        })
+    status: 'PENDING',
+    source: 'DEFLASHING',
+    responsiblePerson: processedBy
+  }
+})
       }
 
       return updated

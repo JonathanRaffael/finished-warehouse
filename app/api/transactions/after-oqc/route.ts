@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
       afterQty,
       ngQty,
       looseQty,
-      spareQty,
+      bufferQty,
       otherQty,
       responsiblePerson
     } = body
@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
     const finalAfter = Math.max(Number(afterQty) || 0, 0)
     const finalNg = Math.max(Number(ngQty) || 0, 0)
     const finalLoose = Math.max(Number(looseQty) || 0, 0)
-    const finalSpare = Math.max(Number(spareQty) || 0, 0)
+    const finalBuffer = Math.max(Number(bufferQty) || 0, 0)
     const finalOther = Math.max(Number(otherQty) || 0, 0)
 
     let transactionId = id
@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
         finalAfter +
         finalNg +
         finalLoose +
-        finalSpare +
+        finalBuffer +
         finalOther
 
       const remaining =
@@ -80,7 +80,7 @@ export async function POST(req: NextRequest) {
           afterQty: finalAfter,
           ngQty: finalNg,
           looseQty: finalLoose,
-          spareQty: finalSpare,
+          bufferQty: finalBuffer,
           otherQty: finalOther,
 
           responsiblePerson: responsiblePerson || null,
@@ -104,7 +104,7 @@ export async function POST(req: NextRequest) {
           okQty: finalAfter,
           ngQty: finalNg,
           looseQty: finalLoose,
-          spareQty: finalSpare,
+          bufferQty: finalBuffer,
           otherQty: finalOther,
           responsiblePerson
         }
@@ -136,17 +136,16 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    if (existing.incomingId) {
-      source = 'INCOMING'
-    } else {
-      source = 'DEFLASHING'
-    }
+    source = existing.incomingId
+      ? 'INCOMING'
+      : 'DEFLASHING'
 
     const processedQty =
       finalAfter +
       finalNg +
       finalLoose +
-      finalSpare
+      finalBuffer +
+      finalOther
 
     if (processedQty > existing.beforeQty) {
       return NextResponse.json(
@@ -177,7 +176,7 @@ export async function POST(req: NextRequest) {
         okQty: finalAfter,
         ngQty: finalNg,
         looseQty: finalLoose,
-        spareQty: finalSpare,
+        bufferQty: finalBuffer,
         otherQty: finalOther,
         responsiblePerson
       }
@@ -204,11 +203,11 @@ export async function POST(req: NextRequest) {
           increment: finalLoose
         },
 
-        spareQty: {
-          increment: finalSpare
+        bufferQty: {
+          increment: finalBuffer
         },
 
-        otherQty:{
+        otherQty: {
           increment: finalOther
         },
 
@@ -236,4 +235,3 @@ export async function POST(req: NextRequest) {
     )
   }
 }
-

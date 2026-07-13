@@ -14,7 +14,7 @@ interface QueueItem {
   beforeQty: number
   afterQty: number
   ngQty: number
-  spareQty: number
+  bufferQty: number
 }
 
 export function QCQueueTable({
@@ -106,7 +106,7 @@ export function QCQueueTable({
 
                 const remaining =
                   q.beforeQty -
-                  (q.afterQty + q.ngQty)
+                  (q.afterQty + q.ngQty + q.bufferQty)
 
                 const percent =
                   q.beforeQty > 0

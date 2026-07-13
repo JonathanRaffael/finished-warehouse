@@ -40,7 +40,7 @@ export function AfterOQCForm({ onSuccess, selectedQueue, sourceType }: AfterOQCF
   const [ok, setOk] = useState<string>('0')
   const [ng, setNg] = useState<string>('0')
   const [loose, setLoose] = useState<string>('0')
-  const [spare, setSpare] = useState<string>('0')
+  const [buffer, setBuffer] = useState<string>('0')
   const [other, setOther] = useState<string>('0')
 
   const [responsiblePerson, setResponsiblePerson] = useState('')
@@ -48,7 +48,7 @@ export function AfterOQCForm({ onSuccess, selectedQueue, sourceType }: AfterOQCF
 
   /* ================= DYNAMIC LABEL ================= */
 
-  const spareLabel =
+  const bufferLabel =
   sourceType === 'deflashing'
     ? 'SparePack'
     : 'Buffer'
@@ -58,7 +58,7 @@ export function AfterOQCForm({ onSuccess, selectedQueue, sourceType }: AfterOQCF
   const okNumber = Number(ok || 0)
   const ngNumber = Number(ng || 0)
   const looseNumber = Number(loose || 0)
-  const spareNumber = Number(spare || 0)
+  const bufferNumber = Number(buffer || 0)
   const otherNumber = Number(other || 0)
 
   /* ================= PRODUCT LOOKUP ================= */
@@ -122,7 +122,7 @@ export function AfterOQCForm({ onSuccess, selectedQueue, sourceType }: AfterOQCF
       setOk('0')
       setNg('0')
       setLoose('0')
-      setSpare('0')
+      setBuffer('0')
       setOther('0')
 
     }
@@ -135,10 +135,10 @@ export function AfterOQCForm({ onSuccess, selectedQueue, sourceType }: AfterOQCF
   okNumber +
   ngNumber +
   looseNumber +
-  spareNumber +
+  bufferNumber +
   otherNumber
 
-  const finalStock = okNumber + spareNumber
+  const finalStock = okNumber + bufferNumber
 
   const progress =
   before > 0
@@ -153,7 +153,7 @@ export function AfterOQCForm({ onSuccess, selectedQueue, sourceType }: AfterOQCF
     okNumber < 0 ||
     looseNumber < 0 ||
     ngNumber < 0 ||
-    spareNumber < 0 ||
+    bufferNumber < 0 ||
     otherNumber < 0
 
   /* ================= SUBMIT ================= */
@@ -177,7 +177,7 @@ export function AfterOQCForm({ onSuccess, selectedQueue, sourceType }: AfterOQCF
   afterQty: okNumber,
   ngQty: ngNumber,
   looseQty: looseNumber,
-  spareQty: spareNumber,
+  bufferQty: bufferNumber,
   otherQty: otherNumber,
   finalStock,
   responsiblePerson,
@@ -203,7 +203,7 @@ export function AfterOQCForm({ onSuccess, selectedQueue, sourceType }: AfterOQCF
       setOk('0')
       setNg('0')
       setLoose('0')
-      setSpare('0')
+      setBuffer('0')
       setOther('0')
       
       setResponsiblePerson('')
@@ -368,15 +368,15 @@ export function AfterOQCForm({ onSuccess, selectedQueue, sourceType }: AfterOQCF
   {/* Buffer / Spare */}
 
   <div>
-    <label className="text-xs text-slate-500">{spareLabel}</label>
+    <label className="text-xs text-slate-500">{bufferLabel}</label>
 
     <Input
       type="number"
-      value={spare}
+      value={buffer}
       onChange={e => {
         const value = e.target.value
         if (value === '' || Number(value) >= 0) {
-          setSpare(value)
+          setBuffer(value)
         }
       }}
     />
@@ -391,7 +391,7 @@ export function AfterOQCForm({ onSuccess, selectedQueue, sourceType }: AfterOQCF
   <div className="flex justify-between text-xs text-slate-500">
 
     <span>
-      Process (OK + NG + Loose + {spareLabel} + Other)
+      Process (OK + NG + Loose + {bufferLabel} + Other)
     </span>
 
     <span>
@@ -418,7 +418,7 @@ export function AfterOQCForm({ onSuccess, selectedQueue, sourceType }: AfterOQCF
 <div className="flex justify-between items-center bg-slate-100 rounded px-4 py-3">
 
   <span className="text-sm">
-    Final Stock (OK + {spareLabel})
+    Final Stock (OK + {bufferLabel})
   </span>
 
   <span className="font-bold text-blue-600">
