@@ -1,64 +1,107 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 
 export async function PUT(
   req: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-
   try {
+    const { id } = await params;
+    const body = await req.json();
 
-    const { id } = await context.params
+    const {
+      date,
+      computerCode,
+      partNo,
+      productName,
+      incomingQty,
+      responsiblePerson,
+      batch,
+    } = body;
 
-    const body = await req.json()
-    const { incomingQty, batch } = body
+    const qty = Number(incomingQty);
 
-    const current = await prisma.incomingTransaction.findUnique({
-      where: { id }
-    })
-
-    if (!current) {
+    if (Number.isNaN(qty) || qty <= 0) {
       return NextResponse.json(
-        { message: 'Transaction not found' },
-        { status: 404 }
-      )
-    }
-
-    const totalOutgoing = current.outgoingQty ?? 0
-    const newIncomingQty = Number(incomingQty)
-
-    if (newIncomingQty < totalOutgoing) {
-      return NextResponse.json(
-        { message: 'Incoming qty cannot be less than outgoing qty' },
+        {
+          success: false,
+          message: "Incoming Qty is invalid",
+        },
         { status: 400 }
-      )
+      );
     }
 
-    const newRemainingQty = newIncomingQty - totalOutgoing
+    const transaction = await prisma.incomingTransaction.findUnique({
+      where: { id },
+    });
+
+    if (!transaction) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Transaction not found",
+        },
+        { status: 404 }
+      );
+    }
+
+    const outgoing = transaction.outgoingQty ?? 0;
+
+    if (qty < outgoing) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: `Incoming Qty cannot be smaller than Out Qty (${outgoing})`,
+        },
+        { status: 400 }
+      );
+    }
+
+    const remainingQty = qty - outgoing;
 
     const updated = await prisma.incomingTransaction.update({
       where: { id },
+
       data: {
-        incomingQty: newIncomingQty,
-        remainingQty: newRemainingQty,
-        batch: String(batch)
-      }
-    })
+        date: date ? new Date(date) : transaction.date,
+
+        computerCode:
+          computerCode?.trim() || transaction.computerCode,
+
+        partNo:
+          partNo?.trim() || transaction.partNo,
+
+        productName:
+          productName?.trim() || transaction.productName,
+
+        responsiblePerson:
+          responsiblePerson?.trim() ||
+          transaction.responsiblePerson,
+
+        incomingQty: qty,
+
+        remainingQty,
+
+        batch: String(batch),
+
+        status: remainingQty > 0 ? "OPEN" : "CLOSED",
+      },
+    });
 
     return NextResponse.json({
       success: true,
-      data: updated
-    })
-
-  } catch (error) {
-
-    console.error('[UPDATE INCOMING]', error)
+      message: "Incoming transaction updated successfully",
+      data: updated,
+    });
+  } catch (err) {
+    console.error(err);
 
     return NextResponse.json(
-      { message: 'Internal server error' },
+      {
+        success: false,
+        message: "Internal Server Error",
+      },
       { status: 500 }
-    )
-
+    );
   }
-
 }
