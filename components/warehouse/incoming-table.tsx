@@ -260,13 +260,32 @@ export function IncomingTable({
                               History
                             </Button>
 
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              onClick={() => startEdit(tx)}
-                            >
-                              Edit
-                            </Button>
+                            {editingId === tx.id ? (
+  <>
+    <Button
+      size="sm"
+      onClick={() => saveEdit(tx)}
+    >
+      Save
+    </Button>
+
+    <Button
+      size="sm"
+      variant="outline"
+      onClick={cancelEdit}
+    >
+      Cancel
+    </Button>
+  </>
+) : (
+    <Button
+      size="sm"
+      variant="secondary"
+      onClick={() => startEdit(tx)}
+    >
+      Edit
+    </Button>
+)}
 
                           </div>
                         </td>
