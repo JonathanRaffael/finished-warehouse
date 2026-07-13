@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
       const totalAfterOQC = product.afterOQCTransactions.reduce(
         (sum, t) => {
           const after = t.afterQty ?? 0
-          const spare = t.spareQty ?? 0
+          const spare = t.bufferQty ?? 0
 
           // hanya hitung kalau sudah ada hasil QC
           if (after === 0 && spare === 0) return sum
