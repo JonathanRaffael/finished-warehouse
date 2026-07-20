@@ -147,17 +147,6 @@ export async function POST(req: NextRequest) {
       finalBuffer +
       finalOther
 
-    if (processedQty > existing.beforeQty) {
-      return NextResponse.json(
-        {
-          message: 'Process qty exceeds remaining'
-        },
-        {
-          status: 400
-        }
-      )
-    }
-
     const remaining =
       existing.beforeQty - processedQty
 
