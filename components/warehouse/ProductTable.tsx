@@ -8,7 +8,9 @@ type Product = {
   incomingQty: number;
   outgoingQty: number;
   finalStock: number;
+
   product: {
+    id: string;          // <-- TAMBAHKAN INI
     computerCode: string;
     partNo: string;
     productName: string;
@@ -105,7 +107,7 @@ export default function ProductTable({ type }: { type: "HT" | "HK" }) {
 
     try {
       const url = isEdit
-        ? `/api/wip/stock/${editId}`
+        ? `/api/wip/product/${editId}`
         : "/api/wip/product";
 
       const method = isEdit ? "PUT" : "POST";
@@ -133,41 +135,51 @@ export default function ProductTable({ type }: { type: "HT" | "HK" }) {
 
   // 🔥 HANDLE EDIT
   const handleEdit = (item: Product) => {
-    setIsEdit(true);
-    setEditId(item.id);
-    setShowForm(true);
+  setIsEdit(true);
 
-    setForm({
-      computerCode: item.product.computerCode,
-      partNo: item.product.partNo,
-      productName: item.product.productName,
-      initialStock: item.initialStock,
-    });
-  };
+  // gunakan ID product
+  setEditId(item.product.id);
+
+  setShowForm(true);
+
+  setForm({
+    computerCode: item.product.computerCode,
+    partNo: item.product.partNo,
+    productName: item.product.productName,
+    initialStock: item.initialStock,
+  });
+};
 
   // 🔥 HANDLE DELETE
-  const handleConfirmDelete = async () => {
-    if (!deleteId) return;
+const handleConfirmDelete = async () => {
+  if (!deleteId) return;
 
-    setDeleting(true);
+  setDeleting(true);
 
-    try {
-      const res = await fetch(`/api/wip/stock/${deleteId}`, {
-        method: "DELETE",
-      });
+  try {
+    const res = await fetch(`/api/wip/product/${deleteId}`, {
+      method: "DELETE",
+    });
 
-      if (!res.ok) {
-        console.error("Delete failed");
-      } else {
-        await fetchData();
-        setDeleteId(null);
-      }
-    } catch (error) {
-      console.error("Delete error:", error);
-    } finally {
-      setDeleting(false);
+    const json = await res.json();
+
+    if (!res.ok) {
+      alert(json.message || "Delete failed");
+      return;
     }
-  };
+
+    alert("Product deleted successfully");
+
+    await fetchData();
+    setDeleteId(null);
+
+  } catch (error) {
+    console.error("Delete error:", error);
+    alert("Internal Server Error");
+  } finally {
+    setDeleting(false);
+  }
+};
 
   // 🔥 RESET FORM
   const resetForm = () => {
@@ -322,7 +334,7 @@ export default function ProductTable({ type }: { type: "HT" | "HK" }) {
                         </button>
 
                         <button
-                          onClick={() => setDeleteId(item.id)}
+                          onClick={() => setDeleteId(item.product.id)}
                           className="px-2 py-1 text-xs bg-red-50 text-red-600 rounded-md hover:bg-red-100"
                         >
                           Delete

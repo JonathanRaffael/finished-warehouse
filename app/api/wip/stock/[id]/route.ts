@@ -1,79 +1,86 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+// ======================
+// UPDATE STOCK
+// ======================
 export async function PUT(
   req: Request,
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    // ✅ UNWRAP PARAMS (WAJIB DI NEXT 15)
     const { id } = await context.params;
 
-    // 🔴 VALIDATE ID
     if (!id) {
       return NextResponse.json(
-        { success: false, message: "Invalid ID" },
+        {
+          success: false,
+          message: "Invalid ID",
+        },
         { status: 400 }
       );
     }
 
-    // 🔴 PARSE BODY
     const body = await req.json().catch(() => null);
 
     if (!body) {
       return NextResponse.json(
-        { success: false, message: "Invalid request body" },
+        {
+          success: false,
+          message: "Invalid request body",
+        },
         { status: 400 }
       );
     }
 
     const initialStock = Number(body.initialStock);
 
-    // 🔴 VALIDATE INPUT
     if (!Number.isFinite(initialStock) || initialStock < 0) {
       return NextResponse.json(
-        { success: false, message: "Initial stock must be a valid non-negative number" },
+        {
+          success: false,
+          message: "Initial stock must be a valid non-negative number",
+        },
         { status: 400 }
       );
     }
 
-    // 🔴 CHECK EXISTENCE
     const existing = await prisma.wipStock.findUnique({
-      where: { id },
+      where: {
+        id,
+      },
     });
 
     if (!existing) {
       return NextResponse.json(
-        { success: false, message: "Stock data not found" },
+        {
+          success: false,
+          message: "Stock data not found",
+        },
         { status: 404 }
       );
     }
 
-    // 🔴 UPDATE DATA
     const updated = await prisma.wipStock.update({
-      where: { id },
+      where: {
+        id,
+      },
       data: {
         initialStock,
+        finalStock:
+          initialStock +
+          (existing.incomingQty ?? 0) -
+          (existing.outgoingQty ?? 0),
       },
       include: {
         product: true,
       },
     });
 
-    // 🔴 CALCULATE FINAL STOCK
-    const finalStock =
-      (updated.initialStock ?? 0) +
-      (updated.incomingQty ?? 0) -
-      (updated.outgoingQty ?? 0);
-
-    // 🔴 SUCCESS RESPONSE
     return NextResponse.json({
       success: true,
       message: "Stock updated successfully",
-      data: {
-        ...updated,
-        finalStock,
-      },
+      data: updated,
     });
 
   } catch (error) {
@@ -84,7 +91,75 @@ export async function PUT(
         success: false,
         message: "Internal server error",
       },
-      { status: 500 }
+      {
+        status: 500,
+      }
+    );
+  }
+}
+
+// ======================
+// DELETE STOCK
+// ======================
+export async function DELETE(
+  req: Request,
+  context: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await context.params;
+
+    if (!id) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Invalid ID",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+
+    const existing = await prisma.wipStock.findUnique({
+      where: {
+        id,
+      },
+    });
+
+    if (!existing) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Stock not found",
+        },
+        {
+          status: 404,
+        }
+      );
+    }
+
+    await prisma.wipStock.delete({
+      where: {
+        id,
+      },
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: "Stock deleted successfully",
+    });
+
+  } catch (error) {
+    console.error("DELETE STOCK ERROR:", error);
+
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Internal server error",
+      },
+      {
+        status: 500,
+      }
     );
   }
 }

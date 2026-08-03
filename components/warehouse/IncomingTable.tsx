@@ -87,18 +87,31 @@ export default function IncomingTable({ type }: { type: "HT" | "HK" }) {
       .finally(() => setLoading(false));
   };
 
-  const fetchProducts = async () => {
-    const res = await fetch(`/api/wip/product?type=${type}`);
-    const data = await res.json();
+ const fetchProducts = async () => {
+  try {
+    const res = await fetch(
+  `/api/wip/product?type=${type}&limit=1000&sort=desc`
+);
+    const result = await res.json();
 
-    const sorted = data.sort(
+    const productList = Array.isArray(result)
+      ? result
+      : Array.isArray(result.data)
+      ? result.data
+      : [];
+
+    const sorted = productList.sort(
       (a: Product, b: Product) =>
         new Date(b.createdAt || "").getTime() -
         new Date(a.createdAt || "").getTime()
     );
 
     setProducts(sorted);
-  };
+  } catch (error) {
+    console.error("FETCH PRODUCT ERROR:", error);
+    setProducts([]);
+  }
+};
 
   useEffect(() => {
     fetchData();
@@ -380,20 +393,24 @@ const totalQty = useMemo(() => {
                   className="border px-3 py-2 w-full rounded-lg"
                   value={form.computerCode}
                   onChange={(e) => {
-                    const code = e.target.value;
+  const code = e.target.value.trim();
 
-                    const found = products.find((p) =>
-                      p.computerCode
-                        .toLowerCase()
-                        .startsWith(code.toLowerCase())
-                    );
+  const found = products.find(
+    (p) =>
+      p.computerCode.trim().toLowerCase() ===
+      code.toLowerCase()
+  );
 
-                    setForm({
-                      ...form,
-                      computerCode: code,
-                      productId: found?.id || "",
-                    });
-                  }}
+  console.log("Code :", code);
+  console.log("Products :", products);
+  console.log("Found :", found);
+
+  setForm({
+    ...form,
+    computerCode: code,
+    productId: found?.id || "",
+  });
+}}
                 />
 
                 <p className="text-xs text-slate-500">

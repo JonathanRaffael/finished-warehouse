@@ -10,12 +10,12 @@ export async function GET(req: Request) {
 
     const type = searchParams.get("type");
     const search = searchParams.get("search") || "";
-    const limit = Number(searchParams.get("limit")) || 20;
-    const sort = searchParams.get("sort") || "asc"; // 🔥 dynamic
+    const limit = Number(searchParams.get("limit")) || 1000;
+    const sort = searchParams.get("sort") || "asc";
 
     if (!type) {
       return NextResponse.json(
-        { error: "Type is required!" },
+        { success: false, message: "Type is required!" },
         { status: 400 }
       );
     }
@@ -47,22 +47,30 @@ export async function GET(req: Request) {
         }),
       },
       orderBy: {
-        createdAt: sort === "desc" ? "desc" : "asc", // 🔥 fleksibel
+        createdAt: sort === "desc" ? "desc" : "asc",
       },
       take: limit,
     });
 
-    return NextResponse.json(products);
+    return NextResponse.json({
+      success: true,
+      data: products,
+    });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("GET PRODUCT ERROR:", error);
+
     return NextResponse.json(
-      { error: "Failed to fetch products" },
-      { status: 500 }
+      {
+        success: false,
+        message: error.message,
+      },
+      {
+        status: 500,
+      }
     );
   }
 }
-
 
 // =====================
 // CREATE PRODUCT
@@ -75,51 +83,56 @@ export async function POST(req: Request) {
     const partNo = body.partNo?.trim();
     const productName = body.productName?.trim();
     const type = body.type;
-    const initialStock = Number(body.initialStock) || 0;
+    const initialStock = Number(body.initialStock ?? 0);
 
-    // =====================
-    // VALIDASI
-    // =====================
     if (!computerCode || !partNo || !productName || !type) {
       return NextResponse.json(
-        { error: "Data tidak lengkap!" },
-        { status: 400 }
+        {
+          success: false,
+          message: "Data tidak lengkap!",
+        },
+        {
+          status: 400,
+        }
       );
     }
 
     if (initialStock < 0) {
       return NextResponse.json(
-        { error: "Initial stock tidak boleh negatif!" },
-        { status: 400 }
+        {
+          success: false,
+          message: "Initial Stock tidak boleh negatif!",
+        },
+        {
+          status: 400,
+        }
       );
     }
 
-    // =====================
-    // CEK DUPLIKAT (CASE INSENSITIVE)
-    // =====================
     const existing = await prisma.wipProduct.findFirst({
       where: {
         computerCode: {
           equals: computerCode,
           mode: "insensitive",
         },
-        type: type, // 🔥 penting (biar HT & HK bisa beda)
+        type,
       },
     });
 
     if (existing) {
       return NextResponse.json(
-        { error: "Computer Code already exists!" },
-        { status: 400 }
+        {
+          success: false,
+          message: "Computer Code already exists!",
+        },
+        {
+          status: 400,
+        }
       );
     }
 
-    // =====================
-    // TRANSACTION
-    // =====================
     const result = await prisma.$transaction(async (tx) => {
 
-      // CREATE PRODUCT
       const product = await tx.wipProduct.create({
         data: {
           computerCode,
@@ -129,31 +142,40 @@ export async function POST(req: Request) {
         },
       });
 
-      // CREATE STOCK
-      await tx.wipStock.create({
+      const stock = await tx.wipStock.create({
         data: {
           productId: product.id,
-          initialStock: initialStock,
+          initialStock,
           incomingQty: 0,
           outgoingQty: 0,
           finalStock: initialStock,
         },
       });
 
-      return product;
+      return {
+        product,
+        stock,
+      };
     });
 
     return NextResponse.json({
       success: true,
+      message: "Product created successfully",
       data: result,
     });
 
-  } catch (error) {
-    console.error("CREATE PRODUCT ERROR:", error);
+  } catch (error: any) {
+    console.error("CREATE PRODUCT ERROR:");
+    console.error(error);
 
     return NextResponse.json(
-      { error: "Failed to create product" },
-      { status: 500 }
+      {
+        success: false,
+        message: error.message,
+      },
+      {
+        status: 500,
+      }
     );
   }
 }

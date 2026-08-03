@@ -6,9 +6,11 @@ import { NextResponse } from "next/server";
 // =====================
 export async function PUT(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
+
     const body = await req.json();
 
     const computerCode = body.computerCode?.trim();
@@ -16,42 +18,75 @@ export async function PUT(
     const productName = body.productName?.trim();
 
     // =====================
-    // VALIDASI
+    // VALIDATION
     // =====================
     if (!computerCode || !partNo || !productName) {
       return NextResponse.json(
-        { error: "Data tidak lengkap!" },
-        { status: 400 }
+        {
+          success: false,
+          message: "Data tidak lengkap!",
+        },
+        {
+          status: 400,
+        }
       );
     }
 
     // =====================
-    // CEK DUPLIKAT (EXCLUDE DIRI SENDIRI)
+    // CHECK PRODUCT EXISTS
     // =====================
-    const existing = await prisma.wipProduct.findFirst({
+    const product = await prisma.wipProduct.findUnique({
+      where: {
+        id,
+      },
+    });
+
+    if (!product) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Product tidak ditemukan!",
+        },
+        {
+          status: 404,
+        }
+      );
+    }
+
+    // =====================
+    // CHECK DUPLICATE
+    // =====================
+    const duplicate = await prisma.wipProduct.findFirst({
       where: {
         computerCode: {
           equals: computerCode,
           mode: "insensitive",
         },
         NOT: {
-          id: params.id, // 🔥 penting
+          id,
         },
       },
     });
 
-    if (existing) {
+    if (duplicate) {
       return NextResponse.json(
-        { error: "Computer Code already exists!" },
-        { status: 400 }
+        {
+          success: false,
+          message: "Computer Code already exists!",
+        },
+        {
+          status: 400,
+        }
       );
     }
 
     // =====================
-    // UPDATE
+    // UPDATE DATABASE
     // =====================
     const updated = await prisma.wipProduct.update({
-      where: { id: params.id },
+      where: {
+        id,
+      },
       data: {
         computerCode,
         partNo,
@@ -61,15 +96,79 @@ export async function PUT(
 
     return NextResponse.json({
       success: true,
+      message: "Product updated successfully",
       data: updated,
     });
-
-  } catch (error) {
+  } catch (error: any) {
     console.error("UPDATE PRODUCT ERROR:", error);
 
     return NextResponse.json(
-      { error: "Failed to update product" },
-      { status: 500 }
+      {
+        success: false,
+        message: error.message,
+      },
+      {
+        status: 500,
+      }
+    );
+  }
+}
+
+// =====================
+// DELETE PRODUCT
+// =====================
+export async function DELETE(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+
+    // =====================
+    // CHECK PRODUCT EXISTS
+    // =====================
+    const product = await prisma.wipProduct.findUnique({
+      where: {
+        id,
+      },
+    });
+
+    if (!product) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Product tidak ditemukan!",
+        },
+        {
+          status: 404,
+        }
+      );
+    }
+
+    // =====================
+    // DELETE DATABASE
+    // =====================
+    await prisma.wipProduct.delete({
+      where: {
+        id,
+      },
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: "Product berhasil dihapus",
+    });
+  } catch (error: any) {
+    console.error("DELETE PRODUCT ERROR:", error);
+
+    return NextResponse.json(
+      {
+        success: false,
+        message: error.message,
+      },
+      {
+        status: 500,
+      }
     );
   }
 }
