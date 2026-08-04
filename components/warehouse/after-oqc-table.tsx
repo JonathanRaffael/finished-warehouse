@@ -249,7 +249,7 @@ export function AfterOQCTable({ transactions, title }: Props) {
                           setOpen(open === row.id ? null : row.id)
                         }
                       >
-                        {row.after + row.buffer + row.other}
+                        {row.after + row.buffer}
                       </td>
 
                     </tr>
