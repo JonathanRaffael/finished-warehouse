@@ -81,13 +81,17 @@ export default function OutgoingTable({ type }: { type: "HT" | "HK" }) {
     const res = await fetch(`/api/wip/product?type=${type}`);
     const data = await res.json();
 
-    const sorted = data.sort(
-      (a: Product, b: Product) =>
-        new Date(b.createdAt || "").getTime() -
-        new Date(a.createdAt || "").getTime()
-    );
+const products = Array.isArray(data)
+  ? data
+  : data.products || data.data || [];
 
-    setProducts(sorted);
+const sorted = [...products].sort(
+  (a: Product, b: Product) =>
+    new Date(b.createdAt || "").getTime() -
+    new Date(a.createdAt || "").getTime()
+);
+
+setProducts(sorted);
   };
 
   useEffect(() => {
