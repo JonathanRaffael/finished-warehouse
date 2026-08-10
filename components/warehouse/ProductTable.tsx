@@ -124,8 +124,16 @@ export default function ProductTable({ type }: { type: "HT" | "HK" }) {
         resetForm();
         fetchData();
       } else {
-        console.error("Submit failed");
-      }
+  const errorData = await res.json();
+
+  console.error("Submit failed:", {
+    status: res.status,
+    statusText: res.statusText,
+    response: errorData,
+  });
+
+  alert(errorData.message || "Gagal menyimpan product");
+}
     } catch (error) {
       console.error("Submit error:", error);
     } finally {

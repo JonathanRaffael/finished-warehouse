@@ -78,21 +78,19 @@ export default function OutgoingTable({ type }: { type: "HT" | "HK" }) {
   // FETCH PRODUCT
   // =====================
   const fetchProducts = async () => {
-    const res = await fetch(`/api/wip/product?type=${type}`);
-    const data = await res.json();
+  const res = await fetch(`/api/wip/product?type=${type}`);
+  const response = await res.json();
 
-const products = Array.isArray(data)
-  ? data
-  : data.products || data.data || [];
+  const products = response.data || [];
 
-const sorted = [...products].sort(
-  (a: Product, b: Product) =>
-    new Date(b.createdAt || "").getTime() -
-    new Date(a.createdAt || "").getTime()
-);
+  const sorted = [...products].sort(
+    (a: Product, b: Product) =>
+      new Date(b.createdAt || "").getTime() -
+      new Date(a.createdAt || "").getTime()
+  );
 
-setProducts(sorted);
-  };
+  setProducts(sorted);
+};
 
   useEffect(() => {
     fetchData();
