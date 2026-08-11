@@ -86,12 +86,27 @@ export function IncomingTable({
   }
 
   const filtered = [...transactions]
-    .sort((a, b) => a.id.localeCompare(b.id))
-    .filter(tx =>
-      `${tx.computerCode}${tx.partNo}${tx.productName}`
-        .toLowerCase()
-        .includes(search.toLowerCase())
+  .sort((a, b) => a.id.localeCompare(b.id))
+  .filter(tx => {
+    const keyword = search.trim().toLowerCase()
+
+    // Tidak ada pencarian
+    if (!keyword) return true
+
+    // Jika input hanya angka,
+    // anggap sebagai pencarian BATCH EXACT
+    if (/^\d+$/.test(keyword)) {
+      return String(tx.batch) === keyword
+    }
+
+    // Jika input bukan angka,
+    // cari berdasarkan CODE / PART / PRODUCT
+    return (
+      tx.computerCode.toLowerCase().includes(keyword) ||
+      tx.partNo.toLowerCase().includes(keyword) ||
+      tx.productName.toLowerCase().includes(keyword)
     )
+  })
 
   const totalPages = Math.ceil(filtered.length / limit)
 
@@ -127,7 +142,7 @@ export function IncomingTable({
 
         <Input
           className="max-w-sm"
-          placeholder="Search code / part / product"
+          placeholder="Search code / part / product / Batch"
           value={search}
           onChange={e => {
             setSearch(e.target.value)

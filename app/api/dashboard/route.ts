@@ -4,112 +4,181 @@ import { prisma } from '@/lib/prisma'
 export async function GET(request: NextRequest) {
   try {
     const session = request.cookies.get('session')
+
     if (!session) {
-      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json(
+        { message: 'Unauthorized' },
+        { status: 401 }
+      )
     }
 
-    const products = await prisma.product.findMany({
-      include: {
-        incomingTransactions: true,
-        afterOQCTransactions: true,
-        outgoingTransactions: true
-      },
-      orderBy: {
-        computerCode: 'asc'
+    /*
+     * Ambil Products + Deflashing Logs secara paralel.
+     * Sebelumnya query dilakukan satu per satu.
+     */
+    const [products, deflashingLogs] = await Promise.all([
+      prisma.product.findMany({
+        select: {
+          computerCode: true,
+          partNo: true,
+          productName: true,
+          productionType: true,
+          location: true,
+          initialStock: true,
+
+          incomingTransactions: {
+            select: {
+              remainingQty: true,
+            },
+          },
+
+          afterOQCTransactions: {
+            select: {
+              status: true,
+              beforeQty: true,
+              afterQty: true,
+              bufferQty: true,
+            },
+          },
+
+          outgoingTransactions: {
+            select: {
+              qtyOut: true,
+            },
+          },
+        },
+
+        orderBy: {
+          computerCode: 'asc',
+        },
+      }),
+
+      prisma.deflashingProcessLog.findMany({
+        select: {
+          qtyOut: true,
+          ngQty: true,
+
+          deflashing: {
+            select: {
+              computerCode: true,
+            },
+          },
+        },
+      }),
+    ])
+
+    /* ================= DEFLASHING MAP ================= */
+
+    /**
+     * Daripada melakukan filter seluruh log
+     * untuk setiap product, kita kelompokkan sekali
+     * berdasarkan computerCode.
+     */
+    const deflashingMap = new Map<
+      string,
+      {
+        totalQty: number
+        totalNG: number
       }
-    })
+    >()
 
-    /* ================= DEFLASHING LOGS ================= */
+    for (const log of deflashingLogs) {
+      const computerCode = log.deflashing?.computerCode
 
-    const deflashingLogs = await prisma.deflashingProcessLog.findMany({
-      include: {
-        deflashing: true
+      if (!computerCode) continue
+
+      const current = deflashingMap.get(computerCode) ?? {
+        totalQty: 0,
+        totalNG: 0,
       }
-    })
 
-    const dashboardData = products.map(product => {
+      current.totalQty += log.qtyOut ?? 0
+      current.totalNG += log.ngQty ?? 0
 
-      /* ================= INCOMING (SISA REAL) ================= */
+      deflashingMap.set(computerCode, current)
+    }
 
-      const totalIncoming = product.incomingTransactions.reduce(
-        (sum, t) => sum + (t.remainingQty ?? 0),
-        0
-      )
+    /* ================= DASHBOARD ================= */
 
-      /* ================= GROUP OQC ================= */
+    const dashboardData = products.map((product) => {
+      /* ================= INCOMING ================= */
 
-      const pendingOQC = product.afterOQCTransactions.filter(
-        t => t.status === 'PENDING'
-      )
+      const totalIncoming =
+        product.incomingTransactions.reduce(
+          (sum, transaction) =>
+            sum + (transaction.remainingQty ?? 0),
+          0
+        )
 
-      const doneOQC = product.afterOQCTransactions.filter(
-        t => t.status === 'DONE'
-      )
+      /* ================= OQC ================= */
+
+      const pendingOQC =
+        product.afterOQCTransactions.filter(
+          (transaction) =>
+            transaction.status === 'PENDING'
+        )
 
       /* ================= BEFORE OQC ================= */
 
-      const beforeOQC = pendingOQC.reduce(
-        (sum, t) => sum + (t.beforeQty ?? 0),
-        0
-      )
+      const beforeOQC =
+        pendingOQC.reduce(
+          (sum, transaction) =>
+            sum + (transaction.beforeQty ?? 0),
+          0
+        )
 
-      /* ================= AFTER OQC (FIXED - SUPPORT PARSIAL) ================= */
-      // Ambil SEMUA hasil QC, tidak peduli status
-      // Selama sudah ada afterQty / spareQty → masuk dashboard
+      /* ================= AFTER OQC ================= */
 
-      const totalAfterOQC = product.afterOQCTransactions.reduce(
-        (sum, t) => {
-          const after = t.afterQty ?? 0
-          const spare = t.bufferQty ?? 0
+      const totalAfterOQC =
+        product.afterOQCTransactions.reduce(
+          (sum, transaction) => {
+            const after =
+              transaction.afterQty ?? 0
 
-          // hanya hitung kalau sudah ada hasil QC
-          if (after === 0 && spare === 0) return sum
+            const spare =
+              transaction.bufferQty ?? 0
 
-          return sum + after + spare
-        },
-        0
-      )
+            if (after === 0 && spare === 0) {
+              return sum
+            }
+
+            return sum + after + spare
+          },
+          0
+        )
 
       /* ================= OUTGOING ================= */
 
-      const totalOutgoing = product.outgoingTransactions.reduce(
-        (sum, o) => sum + (o.qtyOut ?? 0),
-        0
-      )
+      const totalOutgoing =
+        product.outgoingTransactions.reduce(
+          (sum, transaction) =>
+            sum + (transaction.qtyOut ?? 0),
+          0
+        )
 
       /* ================= DEFLASHING ================= */
 
-      const productLogs = deflashingLogs.filter(
-        log => log.deflashing.computerCode === product.computerCode
-      )
-
-      const totalDeflashingQty = productLogs.reduce(
-        (sum, log) => sum + (log.qtyOut ?? 0),
-        0
-      )
-
-      const totalDeflashingNG = productLogs.reduce(
-        (sum, log) => sum + (log.ngQty ?? 0),
-        0
-      )
+      const deflashing =
+        deflashingMap.get(product.computerCode) ?? {
+          totalQty: 0,
+          totalNG: 0,
+        }
 
       /* ================= FINAL STOCK ================= */
-      // initial + incoming + before + after - outgoing
 
       const finalStock =
         (product.initialStock ?? 0) +
-        (totalIncoming ?? 0) +
-        (beforeOQC ?? 0) +
-        (totalAfterOQC ?? 0) -
-        (totalOutgoing ?? 0)
+        totalIncoming +
+        beforeOQC +
+        totalAfterOQC -
+        totalOutgoing
 
-      /* ================= FINAL STOCK WAREHOUSE ================= */
-      // initial + after - outgoing
+      /* ================= WAREHOUSE STOCK ================= */
 
       const finalStockWarehouse =
         (product.initialStock ?? 0) +
-        (totalAfterOQC ?? 0) -
-        (totalOutgoing ?? 0)
+        totalAfterOQC -
+        totalOutgoing
 
       return {
         computerCode: product.computerCode,
@@ -125,16 +194,15 @@ export async function GET(request: NextRequest) {
         totalAfterOQC,
         totalOutgoing,
 
-        totalDeflashingQty,
-        totalDeflashingNG,
+        totalDeflashingQty: deflashing.totalQty,
+        totalDeflashingNG: deflashing.totalNG,
 
         finalStock,
-        finalStockWarehouse
+        finalStockWarehouse,
       }
     })
 
     return NextResponse.json(dashboardData)
-
   } catch (error) {
     console.error('[Dashboard API]', error)
 
