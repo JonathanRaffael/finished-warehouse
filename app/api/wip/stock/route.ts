@@ -17,7 +17,9 @@ export async function GET(req: Request) {
       );
     }
 
-    // Filter produk HT / HK dan pencarian
+    // =========================
+    // FILTER PRODUCT
+    // =========================
     const productWhere: any = {
       type: type as any,
       ...(search && {
@@ -44,7 +46,9 @@ export async function GET(req: Request) {
       }),
     };
 
-    // Ambil data stok beserta produk
+    // =========================
+    // GET STOCK + PRODUCT
+    // =========================
     const stocks = await prisma.wipStock.findMany({
       where: {
         product: productWhere,
@@ -60,47 +64,96 @@ export async function GET(req: Request) {
       take: limit,
     });
 
-    // Hitung Incoming dan Outgoing dari tabel transaksi
-    const result = await Promise.all(
-      stocks.map(async (item) => {
-        const productId = item.productId;
+    // =========================
+    // NO DATA
+    // =========================
+    if (stocks.length === 0) {
+      return NextResponse.json({
+        success: true,
+        total: 0,
+        data: [],
+      });
+    }
 
-        const [incomingAgg, outgoingAgg] = await Promise.all([
-          prisma.wipIncoming.aggregate({
-            where: {
-              productId,
-            },
-            _sum: {
-              qty: true,
-            },
-          }),
+    // =========================
+    // PRODUCT IDS
+    // =========================
+    const productIds = stocks.map((item) => item.productId);
 
-          prisma.wipOutgoing.aggregate({
-            where: {
-              productId,
-            },
-            _sum: {
-              qty: true,
-            },
-          }),
-        ]);
+    // =========================
+    // GET ALL INCOMING AT ONCE
+    // =========================
+    const incomingGroups = await prisma.wipIncoming.groupBy({
+      by: ["productId"],
+      where: {
+        productId: {
+          in: productIds,
+        },
+      },
+      _sum: {
+        qty: true,
+      },
+    });
 
-        const initial = item.initialStock ?? 0;
-        const incoming = incomingAgg._sum.qty ?? 0;
-        const outgoing = outgoingAgg._sum.qty ?? 0;
+    // =========================
+    // GET ALL OUTGOING AT ONCE
+    // =========================
+    const outgoingGroups = await prisma.wipOutgoing.groupBy({
+      by: ["productId"],
+      where: {
+        productId: {
+          in: productIds,
+        },
+      },
+      _sum: {
+        qty: true,
+      },
+    });
 
-        const finalStock = initial + incoming - outgoing;
-
-        return {
-          ...item,
-          initialStock: initial,
-          incomingQty: incoming,
-          outgoingQty: outgoing,
-          finalStock,
-        };
-      })
+    // =========================
+    // CONVERT TO MAP
+    // =========================
+    const incomingMap = new Map(
+      incomingGroups.map((item) => [
+        item.productId,
+        item._sum.qty ?? 0,
+      ])
     );
 
+    const outgoingMap = new Map(
+      outgoingGroups.map((item) => [
+        item.productId,
+        item._sum.qty ?? 0,
+      ])
+    );
+
+    // =========================
+    // CALCULATE STOCK
+    // =========================
+    const result = stocks.map((item) => {
+      const initial = item.initialStock ?? 0;
+
+      const incoming =
+        incomingMap.get(item.productId) ?? 0;
+
+      const outgoing =
+        outgoingMap.get(item.productId) ?? 0;
+
+      const finalStock =
+        initial + incoming - outgoing;
+
+      return {
+        ...item,
+        initialStock: initial,
+        incomingQty: incoming,
+        outgoingQty: outgoing,
+        finalStock,
+      };
+    });
+
+    // =========================
+    // RESPONSE
+    // =========================
     return NextResponse.json({
       success: true,
       total: result.length,
