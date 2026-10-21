@@ -17,34 +17,37 @@ export async function GET(req: Request) {
       );
     }
 
+    // Filter produk HT / HK dan pencarian
+    const productWhere: any = {
+      type: type as any,
+      ...(search && {
+        OR: [
+          {
+            computerCode: {
+              contains: search,
+              mode: "insensitive",
+            },
+          },
+          {
+            partNo: {
+              contains: search,
+              mode: "insensitive",
+            },
+          },
+          {
+            productName: {
+              contains: search,
+              mode: "insensitive",
+            },
+          },
+        ],
+      }),
+    };
+
+    // Ambil data stok beserta produk
     const stocks = await prisma.wipStock.findMany({
       where: {
-        product: {
-          type: type as any,
-
-          ...(search && {
-            OR: [
-              {
-                computerCode: {
-                  contains: search,
-                  mode: "insensitive",
-                },
-              },
-              {
-                partNo: {
-                  contains: search,
-                  mode: "insensitive",
-                },
-              },
-              {
-                productName: {
-                  contains: search,
-                  mode: "insensitive",
-                },
-              },
-            ],
-          }),
-        },
+        product: productWhere,
       },
       include: {
         product: true,
@@ -57,28 +60,52 @@ export async function GET(req: Request) {
       take: limit,
     });
 
-    const result = stocks.map((item) => {
-      const initial = item.initialStock ?? 0;
-      const incoming = item.incomingQty ?? 0;
-      const outgoing = item.outgoingQty ?? 0;
+    // Hitung Incoming dan Outgoing dari tabel transaksi
+    const result = await Promise.all(
+      stocks.map(async (item) => {
+        const productId = item.productId;
 
-      const finalStock = initial + incoming - outgoing;
+        const [incomingAgg, outgoingAgg] = await Promise.all([
+          prisma.wipIncoming.aggregate({
+            where: {
+              productId,
+            },
+            _sum: {
+              qty: true,
+            },
+          }),
 
-      return {
-        ...item,
-        initialStock: initial,
-        incomingQty: incoming,
-        outgoingQty: outgoing,
-        finalStock,
-      };
-    });
+          prisma.wipOutgoing.aggregate({
+            where: {
+              productId,
+            },
+            _sum: {
+              qty: true,
+            },
+          }),
+        ]);
+
+        const initial = item.initialStock ?? 0;
+        const incoming = incomingAgg._sum.qty ?? 0;
+        const outgoing = outgoingAgg._sum.qty ?? 0;
+
+        const finalStock = initial + incoming - outgoing;
+
+        return {
+          ...item,
+          initialStock: initial,
+          incomingQty: incoming,
+          outgoingQty: outgoing,
+          finalStock,
+        };
+      })
+    );
 
     return NextResponse.json({
       success: true,
       total: result.length,
       data: result,
     });
-
   } catch (error) {
     console.error("WIP STOCK ERROR:", error);
 

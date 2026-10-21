@@ -10,12 +10,16 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
-
     const body = await req.json();
 
     const computerCode = body.computerCode?.trim();
     const partNo = body.partNo?.trim();
     const productName = body.productName?.trim();
+
+    const initialStock =
+      body.initialStock !== undefined
+        ? Number(body.initialStock)
+        : undefined;
 
     // =====================
     // VALIDATION
@@ -26,9 +30,20 @@ export async function PUT(
           success: false,
           message: "Data tidak lengkap!",
         },
+        { status: 400 }
+      );
+    }
+
+    if (
+      initialStock !== undefined &&
+      (Number.isNaN(initialStock) || initialStock < 0)
+    ) {
+      return NextResponse.json(
         {
-          status: 400,
-        }
+          success: false,
+          message: "Initial stock tidak valid!",
+        },
+        { status: 400 }
       );
     }
 
@@ -47,14 +62,12 @@ export async function PUT(
           success: false,
           message: "Product tidak ditemukan!",
         },
-        {
-          status: 404,
-        }
+        { status: 404 }
       );
     }
 
     // =====================
-    // CHECK DUPLICATE
+    // CHECK DUPLICATE COMPUTER CODE
     // =====================
     const duplicate = await prisma.wipProduct.findFirst({
       where: {
@@ -74,24 +87,39 @@ export async function PUT(
           success: false,
           message: "Computer Code already exists!",
         },
-        {
-          status: 400,
-        }
+        { status: 400 }
       );
     }
 
     // =====================
-    // UPDATE DATABASE
+    // UPDATE PRODUCT + STOCK
     // =====================
-    const updated = await prisma.wipProduct.update({
-      where: {
-        id,
-      },
-      data: {
-        computerCode,
-        partNo,
-        productName,
-      },
+    const updated = await prisma.$transaction(async (tx) => {
+      // Update WipProduct
+      const updatedProduct = await tx.wipProduct.update({
+        where: {
+          id,
+        },
+        data: {
+          computerCode,
+          partNo,
+          productName,
+        },
+      });
+
+      // Update WipStock
+      if (initialStock !== undefined) {
+        await tx.wipStock.updateMany({
+          where: {
+            productId: id,
+          },
+          data: {
+            initialStock,
+          },
+        });
+      }
+
+      return updatedProduct;
     });
 
     return NextResponse.json({
@@ -105,11 +133,9 @@ export async function PUT(
     return NextResponse.json(
       {
         success: false,
-        message: error.message,
+        message: error.message || "Gagal update product",
       },
-      {
-        status: 500,
-      }
+      { status: 500 }
     );
   }
 }
@@ -139,9 +165,7 @@ export async function DELETE(
           success: false,
           message: "Product tidak ditemukan!",
         },
-        {
-          status: 404,
-        }
+        { status: 404 }
       );
     }
 
@@ -164,11 +188,9 @@ export async function DELETE(
     return NextResponse.json(
       {
         success: false,
-        message: error.message,
+        message: error.message || "Gagal menghapus product",
       },
-      {
-        status: 500,
-      }
+      { status: 500 }
     );
   }
 }
